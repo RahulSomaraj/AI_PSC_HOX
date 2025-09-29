@@ -1,2 +1,2 @@
 # AI_PSC_HOX
-Hox info tech ai tutor for psc apps 
+Hox Info Tech AI Tutor for PSC apps

@@ -24,6 +24,9 @@ export class User {
     @Column({ name: 'password_hash', type: 'varchar', length: 255, select: false })
     passwordHash: string;
 
+    @Column({ type: 'varchar', length: 20, default: 'user' })
+    role: string;
+
     @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;
 

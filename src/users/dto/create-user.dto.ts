@@ -42,4 +42,12 @@ export class CreateUserDto {
     })
     password:string;
 
+
+  @IsString({ message: 'Role must be a string' })
+  @Matches(/^(user|admin)$/, {
+  message: 'Role must be one of: user, admin',
+  })
+  role: string;
+
+
 }

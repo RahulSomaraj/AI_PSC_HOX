@@ -27,7 +27,7 @@ export class UsersService {
     }
     const { password, ...rest } = createUserDto;
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-    const user = this.userRepositories.create({ ...rest, passwordHash });
+    const user = this.userRepositories.create({ ...rest, passwordHash,role: 'user'});
     return await this.userRepositories.save(user);
     }
     catch (err) {

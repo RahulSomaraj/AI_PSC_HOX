@@ -12,13 +12,11 @@ export class AuthController {
         
         const { accessToken } = await this.authService.validateUser(authPayload);
 
-        res.cookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        maxAge: 3600000,
-    });
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
 
-    return { message: 'Login successful' };
+    return { message: 'Login successful',accessToken };
     }
+
+    
+
 }

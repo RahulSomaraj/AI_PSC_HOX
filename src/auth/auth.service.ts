@@ -18,7 +18,7 @@ export class AuthService {
 
         const findUser = await this.userRepositories.findOne({
         where: { email },
-        select: { id: true, email: true, passwordHash: true },
+        select: { id: true, email: true, passwordHash: true, role: true },
         });
 
     
@@ -32,7 +32,7 @@ export class AuthService {
         }
 
         
-        const payload = { sub: findUser.id, email: findUser.email };
+        const payload = { sub: findUser.id, email: findUser.email ,roles: findUser.role};
         const accessToken=this.jwtService.sign(payload);   
         return {accessToken};
     }

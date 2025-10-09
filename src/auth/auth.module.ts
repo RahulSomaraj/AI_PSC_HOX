@@ -9,9 +9,10 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RevokedToken } from './entities/revoked-token.entity';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
+import { UserSession } from './entities/user-session.entity';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([User, RevokedToken]),
+  imports:[TypeOrmModule.forFeature([User, RevokedToken,UserSession]),
     PassportModule,
     ConfigModule,
     JwtModule.registerAsync({

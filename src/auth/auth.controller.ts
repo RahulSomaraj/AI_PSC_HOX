@@ -1,12 +1,13 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
 import { AuthPayloadDto, RefreshTokenDto, LogoutDto } from './dto/auth.dto';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
 import { Public } from 'src/common/decorators/public.decorator';
 import express from 'express';
+import { HttpExceptionFilter } from 'src/shared/exception-service';
 
-
+@UseFilters(new HttpExceptionFilter('AuthController'))
 @Controller('auth')
 export class AuthController {
     jwtService: any;

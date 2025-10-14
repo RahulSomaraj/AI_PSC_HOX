@@ -9,7 +9,7 @@ import { RevokedToken } from './entities/revoked-token.entity';
 import { ExtractJwt } from 'passport-jwt';
 import type { Request } from 'express';
 import { UserSession } from './entities/user-session.entity';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';    
 
 @Injectable()
 export class AuthService {

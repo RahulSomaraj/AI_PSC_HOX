@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [UsersModule,
@@ -26,7 +27,8 @@ import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
         synchronize:true
       })
     }),
-    AuthModule
+    AuthModule,
+    CategoriesModule
   ],
   controllers: [AppController],
   providers: [

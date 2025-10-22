@@ -9,6 +9,9 @@ import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { CategoriesModule } from './categories/categories.module';
+import { CourseService } from './course/course.service';
+import { CourseModule } from './course/course.module';
+
 
 @Module({
   imports: [UsersModule,
@@ -28,12 +31,13 @@ import { CategoriesModule } from './categories/categories.module';
       })
     }),
     AuthModule,
-    CategoriesModule
+    CategoriesModule,
+    CourseModule
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard }
   ],
 })
 export class AppModule {}

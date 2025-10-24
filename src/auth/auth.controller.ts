@@ -1,11 +1,12 @@
-import { Body, Controller, Post, Req, Res, UseFilters, UseGuards, UseInterceptors } from '@nestjs/common';
-import { AuthPayloadDto, RefreshTokenDto, LogoutDto } from './dto/auth.dto';
+import { Body, Controller, Post, Req, Res, UseFilters, UseGuards, UseInterceptors, Delete } from '@nestjs/common';
+import { AuthPayloadDto, RefreshTokenDto, LogoutDto, ForgotPasswordDto, ResetPasswordDto, UpdatePasswordDto, DeleteProfileDto } from './dto/auth.dto';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import express from 'express';
-import { HttpExceptionFilter } from 'src/shared/exception-service';
+import { HttpExceptionFilter } from '../shared/exception-service';
+import { GetUser } from '../common/decorators/get-user.decorator';
 
 @UseFilters(new HttpExceptionFilter('AuthController'))
 @Controller('auth')
@@ -61,6 +62,36 @@ export class AuthController {
         refreshToken,
         sessionId,
     };
+    }
+
+    @Post('forgot-password')
+    @Public()
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+        return await this.authService.forgotPassword(forgotPasswordDto);
+    }
+
+    @Post('reset-password')
+    @Public()
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+        return await this.authService.resetPassword(resetPasswordDto);
+    }
+
+    @Post('update-password')
+    @UseGuards(JwtAuthGuard)
+    async updatePassword(
+        @GetUser('id') userId: number,
+        @Body() updatePasswordDto: UpdatePasswordDto
+    ) {
+        return await this.authService.updatePassword(userId, updatePasswordDto);
+    }
+
+    @Delete('profile')
+    @UseGuards(JwtAuthGuard)
+    async deleteProfile(
+        @GetUser('id') userId: number,
+        @Body() deleteProfileDto: DeleteProfileDto
+    ) {
+        return await this.authService.deleteProfile(userId, deleteProfileDto);
     }
     
     

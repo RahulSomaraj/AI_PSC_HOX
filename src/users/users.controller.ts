@@ -2,12 +2,12 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseFilter
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { Role } from 'src/common/enums/role.enum';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { HttpExceptionFilter } from 'src/shared/exception-service';
-import { Public } from 'src/common/decorators/public.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { HttpExceptionFilter } from '../shared/exception-service';
+import { Public } from '../common/decorators/public.decorator';
 
 @UseFilters(new HttpExceptionFilter('users'))
 @Controller('users')

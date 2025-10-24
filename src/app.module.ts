@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { CategoriesModule } from './categories/categories.module';
 import { CourseService } from './course/course.service';
 import { CourseModule } from './course/course.module';
+import { QuestionsModule } from './questions/questions.module';
 
 
 @Module({
@@ -19,20 +20,37 @@ import { CourseModule } from './course/course.module';
     TypeOrmModule.forRootAsync({
       imports:[ConfigModule],
       inject:[ConfigService],
-      useFactory:(configService:ConfigService)=>({
-        type:'postgres',
-        host:configService.get('DB_HOST'),
-        port:+configService.get('DB_PORT'),
-        username:configService.get('DB_USERNAME'),
-        password:configService.get('DB_PASSWORD'),
-        database:configService.get('DB_NAME'),
-        entities: [join(process.cwd(), 'dist/**/*.entity.js')],
-        synchronize:true
-      })
+      useFactory:(configService:ConfigService)=>{
+        const dbHost = configService.get('DB_HOST');
+        const dbPort = configService.get('DB_PORT');
+        const dbUsername = configService.get('DB_USERNAME');
+        const dbPassword = configService.get('DB_PASSWORD');
+        const dbName = configService.get('DB_NAME');
+
+        // Validate required environment variables
+        if (!dbHost || !dbPort || !dbUsername || !dbPassword || !dbName) {
+          throw new Error(
+            'Missing required database environment variables. Please check your .env file and ensure the following are set: DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME'
+          );
+        }
+
+        return {
+          type:'postgres',
+          host: dbHost,
+          port: +dbPort,
+          username: dbUsername,
+          password: dbPassword,
+          database: dbName,
+          entities: [join(process.cwd(), 'dist/**/*.entity.js')],
+          synchronize: true,
+          logging: process.env.NODE_ENV === 'development'
+        };
+      }
     }),
     AuthModule,
     CategoriesModule,
-    CourseModule
+    CourseModule,
+    QuestionsModule
   ],
   controllers: [AppController],
   providers: [

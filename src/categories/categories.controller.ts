@@ -2,9 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseInter
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { Public } from 'src/common/decorators/public.decorator';
-import { HttpExceptionFilter } from 'src/shared/exception-service';
-import { LoggingInterceptor } from 'src/interceptors/logging-interceptors';
+import { Public } from '../common/decorators/public.decorator';
+import { HttpExceptionFilter } from '../shared/exception-service';
+import { LoggingInterceptor } from '../interceptors/logging-interceptors';
 
 @UseFilters(new HttpExceptionFilter('Categories'))
 @Controller('categories')

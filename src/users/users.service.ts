@@ -1,7 +1,7 @@
 import { ConflictException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
@@ -20,7 +20,7 @@ export class UsersService {
     {
     const email = createUserDto.email.trim().toLowerCase();
 
-    const exists = await this.userRepositories.findOne({ where: { email } });
+    const exists = await this.userRepositories.findOne({ where: { email, deletedAt: IsNull() } });
 
     if (exists) {
       throw new ConflictException('Use another Email');
@@ -40,7 +40,7 @@ export class UsersService {
   async findOne(id: number) {
     try{
         const user=await this.userRepositories.findOne({
-        where:{id}
+        where:{id, deletedAt: IsNull()}
         });
         if(!user)
         {
@@ -56,7 +56,7 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    const user = await this.userRepositories.findOne({ where: { id } });
+    const user = await this.userRepositories.findOne({ where: { id, deletedAt: IsNull() } });
     if (!user) throw new NotFoundException('User not found');
 
     Object.assign(user, updateUserDto);
@@ -64,7 +64,7 @@ export class UsersService {
   }
 
   async remove(id: number): Promise<{message:string}> {
-    const user = await this.userRepositories.findOne({ where: { id } });
+    const user = await this.userRepositories.findOne({ where: { id, deletedAt: IsNull() } });
     if (!user) throw new NotFoundException(`User with ID ${id} not found`);
 
     await this.userRepositories.remove(user);

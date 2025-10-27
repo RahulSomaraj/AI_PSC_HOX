@@ -1,5 +1,9 @@
 // src/auth/guards/jwt.auth.guard.ts
-import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { ExtractJwt } from 'passport-jwt';
@@ -8,7 +12,10 @@ import { RevokedToken } from '../entities/revoked-token.entity';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private readonly dataSource: DataSource, private readonly reflector: Reflector) {
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly reflector: Reflector,
+  ) {
     super();
   }
 

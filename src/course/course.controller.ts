@@ -1,10 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseFilters,
+} from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { HttpExceptionFilter } from '../shared/exception-service';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
 import { Public } from '../common/decorators/public.decorator';
 import { DeleteCourseDto } from './dto/delete-course.dto';
 
@@ -36,7 +43,7 @@ export class CourseController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string,@Body() delteCourseDto:DeleteCourseDto) {
-    return this.courseService.remove(+id,delteCourseDto);
+  remove(@Param('id') id: string, @Body() delteCourseDto: DeleteCourseDto) {
+    return this.courseService.remove(+id, delteCourseDto);
   }
 }

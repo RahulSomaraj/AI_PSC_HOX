@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseFilters,
+  UseInterceptors,
+} from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -31,9 +41,12 @@ export class CategoriesController {
 
   @Public()
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
-    const data=await this.categoriesService.update(+id, updateCategoryDto);
-    return {message:"Update Successfull",data};
+  async update(
+    @Param('id') id: string,
+    @Body() updateCategoryDto: UpdateCategoryDto,
+  ) {
+    const data = await this.categoriesService.update(+id, updateCategoryDto);
+    return { message: 'Update Successfull', data };
   }
 
   @Public()

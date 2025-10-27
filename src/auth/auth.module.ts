@@ -14,28 +14,36 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { EmailService } from '../shared/email.service';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([User, RevokedToken, UserSession, PasswordResetToken]),
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      RevokedToken,
+      UserSession,
+      PasswordResetToken,
+    ]),
     PassportModule,
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory:async(config:ConfigService)=>{
+      useFactory: async (config: ConfigService) => {
         const jwtSecret = config.get<string>('JWT_SECRET');
-        
+
         if (!jwtSecret) {
-          throw new Error('Missing required JWT_SECRET environment variable. Please check your .env file.');
+          throw new Error(
+            'Missing required JWT_SECRET environment variable. Please check your .env file.',
+          );
         }
 
         return {
           secret: jwtSecret,
-          signOptions: { expiresIn: '1h' }, 
+          signOptions: { expiresIn: '1h' },
         };
       },
-       inject:[ConfigService]
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, EmailService],
-  exports: [JwtAuthGuard]
+  exports: [JwtAuthGuard],
 })
 export class AuthModule {}

@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
-import { 
-  ForgotPasswordDto, 
-  ResetPasswordDto, 
-  UpdatePasswordDto, 
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  UpdatePasswordDto,
   DeleteProfileDto,
-  AuthPayloadDto 
+  AuthPayloadDto,
 } from './dto/auth.dto';
 
 describe('AuthController', () => {
@@ -72,11 +72,21 @@ describe('AuthController', () => {
         sessionId: 'sessionId',
       });
 
-      const result = await controller.login(authPayload, mockRequest as any, mockResponse as any);
+      const result = await controller.login(
+        authPayload,
+        mockRequest as any,
+        mockResponse as any,
+      );
 
       expect(result).toEqual(expectedResult);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('Authorization', 'Bearer accessToken');
-      expect(mockAuthService.validateUser).toHaveBeenCalledWith(authPayload, mockRequest);
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'Authorization',
+        'Bearer accessToken',
+      );
+      expect(mockAuthService.validateUser).toHaveBeenCalledWith(
+        authPayload,
+        mockRequest,
+      );
     });
   });
 
@@ -95,7 +105,9 @@ describe('AuthController', () => {
       const result = await controller.forgotPassword(forgotPasswordDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(forgotPasswordDto);
+      expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(
+        forgotPasswordDto,
+      );
     });
   });
 
@@ -107,7 +119,8 @@ describe('AuthController', () => {
       };
 
       const expectedResult = {
-        message: 'Password has been reset successfully. Please log in with your new password.',
+        message:
+          'Password has been reset successfully. Please log in with your new password.',
       };
 
       mockAuthService.resetPassword.mockResolvedValue(expectedResult);
@@ -115,7 +128,9 @@ describe('AuthController', () => {
       const result = await controller.resetPassword(resetPasswordDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockAuthService.resetPassword).toHaveBeenCalledWith(resetPasswordDto);
+      expect(mockAuthService.resetPassword).toHaveBeenCalledWith(
+        resetPasswordDto,
+      );
     });
   });
 
@@ -135,7 +150,10 @@ describe('AuthController', () => {
       const result = await controller.updatePassword(1, updatePasswordDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockAuthService.updatePassword).toHaveBeenCalledWith(1, updatePasswordDto);
+      expect(mockAuthService.updatePassword).toHaveBeenCalledWith(
+        1,
+        updatePasswordDto,
+      );
     });
   });
 
@@ -147,7 +165,8 @@ describe('AuthController', () => {
       };
 
       const expectedResult = {
-        message: 'Your account has been successfully deleted. All your data has been removed and you will be logged out.',
+        message:
+          'Your account has been successfully deleted. All your data has been removed and you will be logged out.',
       };
 
       mockAuthService.deleteProfile.mockResolvedValue(expectedResult);
@@ -155,7 +174,10 @@ describe('AuthController', () => {
       const result = await controller.deleteProfile(1, deleteProfileDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockAuthService.deleteProfile).toHaveBeenCalledWith(1, deleteProfileDto);
+      expect(mockAuthService.deleteProfile).toHaveBeenCalledWith(
+        1,
+        deleteProfileDto,
+      );
     });
   });
 });

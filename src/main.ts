@@ -6,10 +6,21 @@ import { ResponseInterceptor } from './interceptors/response-interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(cookieParser()); 
-  if(process.env.NODE_ENV!=='production')
-  {
-    app.useGlobalInterceptors(new LoggingInterceptor(),new ResponseInterceptor());
+
+  // Enable CORS for all origins
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
+
+  app.use(cookieParser());
+  if (process.env.NODE_ENV !== 'production') {
+    app.useGlobalInterceptors(
+      new LoggingInterceptor(),
+      new ResponseInterceptor(),
+    );
   }
   await app.listen(process.env.PORT ?? 3000);
 }

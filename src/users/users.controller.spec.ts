@@ -285,7 +285,9 @@ describe('UsersController - API Tests', () => {
       const errorMessage = 'Invalid user data provided';
       mockUsersService.create.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(createUserDto)).rejects.toThrow(errorMessage);
+      await expect(controller.create(createUserDto)).rejects.toThrow(
+        errorMessage,
+      );
       expect(mockUsersService.create).toHaveBeenCalledWith(createUserDto);
     });
 
@@ -299,4 +301,3 @@ describe('UsersController - API Tests', () => {
     });
   });
 });
-

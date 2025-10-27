@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'course' })
 export class Course {
@@ -6,29 +13,29 @@ export class Course {
   id: number;
 
   @Column({ length: 50 })
-  courseName: string; 
+  courseName: string;
 
   @Column({ unique: true })
-  courseId: string; 
+  courseId: string;
 
   @Column({ type: 'text', nullable: true })
-  description?: string; 
+  description?: string;
 
   @Column({ length: 100 })
   createdBy: string;
 
   @CreateDateColumn()
-  createdAt: Date; 
+  createdAt: Date;
 
   @Column({ length: 100, nullable: true })
   updatedBy?: string;
 
   @UpdateDateColumn({ nullable: true })
-  updatedAt?: Date; 
+  updatedAt?: Date;
 
   @Column({ length: 100, nullable: true })
   deletedBy?: string;
 
   @DeleteDateColumn({ nullable: true })
-  deletedAt?: Date; 
+  deletedAt?: Date;
 }

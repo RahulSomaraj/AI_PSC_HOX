@@ -55,7 +55,9 @@ describe('CategoriesController - API Tests', () => {
       const result = await controller.create(createCategoryDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockCategoriesService.create).toHaveBeenCalledWith(createCategoryDto);
+      expect(mockCategoriesService.create).toHaveBeenCalledWith(
+        createCategoryDto,
+      );
     });
   });
 
@@ -109,7 +111,7 @@ describe('CategoriesController - API Tests', () => {
       };
 
       const expectedResult = {
-        message: "Update Successfull",
+        message: 'Update Successfull',
         data: serviceResult,
       };
 
@@ -118,7 +120,10 @@ describe('CategoriesController - API Tests', () => {
       const result = await controller.update(categoryId, updateCategoryDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockCategoriesService.update).toHaveBeenCalledWith(categoryId, updateCategoryDto);
+      expect(mockCategoriesService.update).toHaveBeenCalledWith(
+        categoryId,
+        updateCategoryDto,
+      );
     });
   });
 

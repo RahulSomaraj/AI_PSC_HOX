@@ -1,4 +1,16 @@
-import { IsString, IsNotEmpty, IsArray, ArrayMinSize, ArrayMaxSize, IsNumber, IsOptional, IsUrl, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsArray,
+  ArrayMinSize,
+  ArrayMaxSize,
+  IsNumber,
+  IsOptional,
+  IsUrl,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateQuestionDto {
   @IsNumber()

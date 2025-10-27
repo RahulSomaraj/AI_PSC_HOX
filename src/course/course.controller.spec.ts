@@ -224,7 +224,10 @@ describe('CourseController - API Tests', () => {
 
       mockCourseService.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(courseId.toString(), updateCourseDto);
+      const result = await controller.update(
+        courseId.toString(),
+        updateCourseDto,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(mockCourseService.update).toHaveBeenCalledWith(1, updateCourseDto);
@@ -251,7 +254,10 @@ describe('CourseController - API Tests', () => {
 
       mockCourseService.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(courseId.toString(), updateCourseDto);
+      const result = await controller.update(
+        courseId.toString(),
+        updateCourseDto,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(mockCourseService.update).toHaveBeenCalledWith(1, updateCourseDto);
@@ -276,7 +282,10 @@ describe('CourseController - API Tests', () => {
 
       mockCourseService.remove.mockResolvedValue(expectedResult);
 
-      const result = await controller.remove(courseId.toString(), deleteCourseDto);
+      const result = await controller.remove(
+        courseId.toString(),
+        deleteCourseDto,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(mockCourseService.remove).toHaveBeenCalledWith(1, deleteCourseDto);
@@ -299,7 +308,10 @@ describe('CourseController - API Tests', () => {
 
       mockCourseService.remove.mockResolvedValue(expectedResult);
 
-      const result = await controller.remove(courseId.toString(), deleteCourseDto);
+      const result = await controller.remove(
+        courseId.toString(),
+        deleteCourseDto,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(mockCourseService.remove).toHaveBeenCalledWith(2, deleteCourseDto);
@@ -319,7 +331,10 @@ describe('CourseController - API Tests', () => {
 
       mockCourseService.remove.mockResolvedValue(expectedResult);
 
-      const result = await controller.remove(courseId.toString(), deleteCourseDto);
+      const result = await controller.remove(
+        courseId.toString(),
+        deleteCourseDto,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(mockCourseService.remove).toHaveBeenCalledWith(3, deleteCourseDto);
@@ -342,9 +357,10 @@ describe('CourseController - API Tests', () => {
       const errorMessage = 'Invalid course data provided';
       mockCourseService.create.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(createCourseDto)).rejects.toThrow(errorMessage);
+      await expect(controller.create(createCourseDto)).rejects.toThrow(
+        errorMessage,
+      );
       expect(mockCourseService.create).toHaveBeenCalledWith(createCourseDto);
     });
   });
 });
-

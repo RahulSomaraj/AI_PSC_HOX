@@ -7,14 +7,17 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {}
 
-  async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
+  async sendPasswordResetEmail(
+    email: string,
+    resetToken: string,
+  ): Promise<void> {
     const resetUrl = `${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/reset-password?token=${resetToken}`;
-    
+
     // In a real application, you would integrate with an email service like SendGrid, AWS SES, etc.
     // For now, we'll just log the reset link
     this.logger.log(`Password reset email for ${email}:`);
     this.logger.log(`Reset URL: ${resetUrl}`);
-    
+
     // TODO: Implement actual email sending
     // Example with SendGrid:
     // const msg = {
@@ -38,4 +41,3 @@ export class EmailService {
     `;
   }
 }
-

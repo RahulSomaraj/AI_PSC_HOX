@@ -4,6 +4,7 @@ import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { AnswerQuestionDto } from './dto/answer-question.dto';
+import { BulkQuestionsDto } from './dto/bulk-questions.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
@@ -24,6 +25,7 @@ describe('QuestionsController - API Tests', () => {
     getQuestionsByDifficulty: jest.fn(),
     getQuestionsByTags: jest.fn(),
     getQuestionStats: jest.fn(),
+    getBulkQuestions: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -89,7 +91,10 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.create(createQuestionDto, 1);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.create).toHaveBeenCalledWith(createQuestionDto, 1);
+      expect(mockQuestionsService.create).toHaveBeenCalledWith(
+        createQuestionDto,
+        1,
+      );
     });
 
     it('should create a question with minimal data', async () => {
@@ -119,7 +124,10 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.create(createQuestionDto, 1);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.create).toHaveBeenCalledWith(createQuestionDto, 1);
+      expect(mockQuestionsService.create).toHaveBeenCalledWith(
+        createQuestionDto,
+        1,
+      );
     });
   });
 
@@ -203,7 +211,10 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.getRandomQuestions(courseId, limit);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.getRandomQuestions).toHaveBeenCalledWith(1, 5);
+      expect(mockQuestionsService.getRandomQuestions).toHaveBeenCalledWith(
+        1,
+        5,
+      );
     });
   });
 
@@ -222,12 +233,19 @@ describe('QuestionsController - API Tests', () => {
         },
       ];
 
-      mockQuestionsService.getQuestionsByDifficulty.mockResolvedValue(expectedResult);
+      mockQuestionsService.getQuestionsByDifficulty.mockResolvedValue(
+        expectedResult,
+      );
 
-      const result = await controller.getQuestionsByDifficulty(difficulty, courseId);
+      const result = await controller.getQuestionsByDifficulty(
+        difficulty,
+        courseId,
+      );
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.getQuestionsByDifficulty).toHaveBeenCalledWith(1, 3);
+      expect(
+        mockQuestionsService.getQuestionsByDifficulty,
+      ).toHaveBeenCalledWith(1, 3);
     });
   });
 
@@ -251,7 +269,10 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.getQuestionsByTags(courseId, tags);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.getQuestionsByTags).toHaveBeenCalledWith(1, ['geography', 'europe']);
+      expect(mockQuestionsService.getQuestionsByTags).toHaveBeenCalledWith(1, [
+        'geography',
+        'europe',
+      ]);
     });
   });
 
@@ -261,7 +282,7 @@ describe('QuestionsController - API Tests', () => {
       const expectedResult = {
         totalQuestions: 10,
         byDifficulty: { 1: 3, 2: 4, 3: 2, 4: 1, 5: 0 },
-        byTags: { 'geography': 5, 'math': 3, 'science': 2 },
+        byTags: { geography: 5, math: 3, science: 2 },
         averagePoints: 12.5,
       };
 
@@ -301,7 +322,9 @@ describe('QuestionsController - API Tests', () => {
       const errorMessage = 'Question with ID 999 not found';
       mockQuestionsService.findOne.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(questionId.toString())).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(questionId.toString())).rejects.toThrow(
+        errorMessage,
+      );
       expect(mockQuestionsService.findOne).toHaveBeenCalledWith(999);
     });
   });
@@ -326,10 +349,18 @@ describe('QuestionsController - API Tests', () => {
 
       mockQuestionsService.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(questionId.toString(), updateQuestionDto, 1);
+      const result = await controller.update(
+        questionId.toString(),
+        updateQuestionDto,
+        1,
+      );
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.update).toHaveBeenCalledWith(1, updateQuestionDto, 1);
+      expect(mockQuestionsService.update).toHaveBeenCalledWith(
+        1,
+        updateQuestionDto,
+        1,
+      );
     });
 
     it('should handle partial updates', async () => {
@@ -347,10 +378,18 @@ describe('QuestionsController - API Tests', () => {
 
       mockQuestionsService.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(questionId.toString(), updateQuestionDto, 1);
+      const result = await controller.update(
+        questionId.toString(),
+        updateQuestionDto,
+        1,
+      );
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.update).toHaveBeenCalledWith(1, updateQuestionDto, 1);
+      expect(mockQuestionsService.update).toHaveBeenCalledWith(
+        1,
+        updateQuestionDto,
+        1,
+      );
     });
   });
 
@@ -408,7 +447,9 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.answerQuestion(answerQuestionDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.answerQuestion).toHaveBeenCalledWith(answerQuestionDto);
+      expect(mockQuestionsService.answerQuestion).toHaveBeenCalledWith(
+        answerQuestionDto,
+      );
     });
 
     it('should handle incorrect answer', async () => {
@@ -432,7 +473,9 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.answerQuestion(answerQuestionDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.answerQuestion).toHaveBeenCalledWith(answerQuestionDto);
+      expect(mockQuestionsService.answerQuestion).toHaveBeenCalledWith(
+        answerQuestionDto,
+      );
     });
   });
 
@@ -457,7 +500,10 @@ describe('QuestionsController - API Tests', () => {
       const result = await controller.create(createQuestionDto, 1);
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.create).toHaveBeenCalledWith(createQuestionDto, 1);
+      expect(mockQuestionsService.create).toHaveBeenCalledWith(
+        createQuestionDto,
+        1,
+      );
     });
 
     it('should handle role-based access control', async () => {
@@ -474,10 +520,18 @@ describe('QuestionsController - API Tests', () => {
 
       mockQuestionsService.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(questionId.toString(), updateQuestionDto, 1);
+      const result = await controller.update(
+        questionId.toString(),
+        updateQuestionDto,
+        1,
+      );
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.update).toHaveBeenCalledWith(1, updateQuestionDto, 1);
+      expect(mockQuestionsService.update).toHaveBeenCalledWith(
+        1,
+        updateQuestionDto,
+        1,
+      );
     });
   });
 
@@ -490,11 +544,17 @@ describe('QuestionsController - API Tests', () => {
         correctAnswer: 'C', // Invalid: not in answers
       };
 
-      const errorMessage = 'Correct answer must be one of the provided answer choices';
+      const errorMessage =
+        'Correct answer must be one of the provided answer choices';
       mockQuestionsService.create.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(createQuestionDto, 1)).rejects.toThrow(errorMessage);
-      expect(mockQuestionsService.create).toHaveBeenCalledWith(createQuestionDto, 1);
+      await expect(controller.create(createQuestionDto, 1)).rejects.toThrow(
+        errorMessage,
+      );
+      expect(mockQuestionsService.create).toHaveBeenCalledWith(
+        createQuestionDto,
+        1,
+      );
     });
 
     it('should handle database connection errors', async () => {
@@ -502,8 +562,164 @@ describe('QuestionsController - API Tests', () => {
       const errorMessage = 'Database connection failed';
       mockQuestionsService.findOne.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(questionId.toString())).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(questionId.toString())).rejects.toThrow(
+        errorMessage,
+      );
       expect(mockQuestionsService.findOne).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('POST /questions/bulk (getBulkQuestions)', () => {
+    it('should return multiple questions by IDs', async () => {
+      const bulkQuestionsDto: BulkQuestionsDto = {
+        questionIds: [1, 2, 3],
+      };
+
+      const mockResponse = {
+        questions: [
+          {
+            id: 1,
+            questionText: 'What is the capital of France?',
+            choices: ['Paris', 'London', 'Berlin', 'Madrid'],
+            correctAnswer: 'Paris',
+            description: 'Description of Paris',
+            descriptionLink: 'http://example.com/paris',
+            explanation: 'Paris is the capital and largest city of France.',
+            difficulty: 3,
+            points: 10,
+            tags: ['geography'],
+          },
+          {
+            id: 2,
+            questionText: 'What is 2+2?',
+            choices: ['3', '4', '5', '6'],
+            correctAnswer: '4',
+            description: 'Basic math question',
+            descriptionLink: 'http://example.com/math',
+            explanation: '2+2 equals 4',
+            difficulty: 1,
+            points: 5,
+            tags: ['math'],
+          },
+        ],
+        notFound: [3],
+        totalFound: 2,
+      };
+
+      mockQuestionsService.getBulkQuestions.mockResolvedValue(mockResponse);
+
+      const result = await controller.getBulkQuestions(bulkQuestionsDto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockQuestionsService.getBulkQuestions).toHaveBeenCalledWith(
+        bulkQuestionsDto,
+      );
+    });
+
+    it('should handle empty question IDs array', async () => {
+      const bulkQuestionsDto: BulkQuestionsDto = {
+        questionIds: [],
+      };
+
+      const mockResponse = {
+        questions: [],
+        notFound: [],
+        totalFound: 0,
+      };
+
+      mockQuestionsService.getBulkQuestions.mockResolvedValue(mockResponse);
+
+      const result = await controller.getBulkQuestions(bulkQuestionsDto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockQuestionsService.getBulkQuestions).toHaveBeenCalledWith(
+        bulkQuestionsDto,
+      );
+    });
+
+    it('should handle all questions not found', async () => {
+      const bulkQuestionsDto: BulkQuestionsDto = {
+        questionIds: [999, 998, 997],
+      };
+
+      const mockResponse = {
+        questions: [],
+        notFound: [999, 998, 997],
+        totalFound: 0,
+      };
+
+      mockQuestionsService.getBulkQuestions.mockResolvedValue(mockResponse);
+
+      const result = await controller.getBulkQuestions(bulkQuestionsDto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockQuestionsService.getBulkQuestions).toHaveBeenCalledWith(
+        bulkQuestionsDto,
+      );
+    });
+
+    it('should handle partial matches', async () => {
+      const bulkQuestionsDto: BulkQuestionsDto = {
+        questionIds: [1, 999, 2, 998],
+      };
+
+      const mockResponse = {
+        questions: [
+          {
+            id: 1,
+            questionText: 'Question 1',
+            choices: ['A', 'B', 'C', 'D'],
+            correctAnswer: 'A',
+            description: 'Description 1',
+            descriptionLink: 'http://example.com/1',
+            explanation: 'Explanation 1',
+            difficulty: 2,
+            points: 10,
+            tags: ['tag1'],
+          },
+          {
+            id: 2,
+            questionText: 'Question 2',
+            choices: ['X', 'Y', 'Z', 'W'],
+            correctAnswer: 'X',
+            description: 'Description 2',
+            descriptionLink: 'http://example.com/2',
+            explanation: 'Explanation 2',
+            difficulty: 3,
+            points: 15,
+            tags: ['tag2'],
+          },
+        ],
+        notFound: [999, 998],
+        totalFound: 2,
+      };
+
+      mockQuestionsService.getBulkQuestions.mockResolvedValue(mockResponse);
+
+      const result = await controller.getBulkQuestions(bulkQuestionsDto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockQuestionsService.getBulkQuestions).toHaveBeenCalledWith(
+        bulkQuestionsDto,
+      );
+    });
+
+    it('should handle service errors', async () => {
+      const bulkQuestionsDto: BulkQuestionsDto = {
+        questionIds: [1, 2, 3],
+      };
+
+      const errorMessage = 'Database connection failed';
+      mockQuestionsService.getBulkQuestions.mockRejectedValue(
+        new Error(errorMessage),
+      );
+
+      await expect(
+        controller.getBulkQuestions(bulkQuestionsDto),
+      ).rejects.toThrow(errorMessage);
+      expect(mockQuestionsService.getBulkQuestions).toHaveBeenCalledWith(
+        bulkQuestionsDto,
+      );
     });
   });
 });

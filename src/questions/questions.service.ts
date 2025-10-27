@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Question } from './entities/question.entity';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { AnswerQuestionDto } from './dto/answer-question.dto';
 import { QuizResultDto } from './dto/quiz-result.dto';
+import {
+  BulkQuestionsDto,
+  BulkQuestionsResponseDto,
+} from './dto/bulk-questions.dto';
 
 @Injectable()
 export class QuestionsService {
@@ -14,12 +22,18 @@ export class QuestionsService {
     private questionRepository: Repository<Question>,
   ) {}
 
-  async create(createQuestionDto: CreateQuestionDto, createdBy: number): Promise<Question> {
-    const { courseId, answers, correctAnswer, ...otherFields } = createQuestionDto;
+  async create(
+    createQuestionDto: CreateQuestionDto,
+    createdBy: number,
+  ): Promise<Question> {
+    const { courseId, answers, correctAnswer, ...otherFields } =
+      createQuestionDto;
 
     // Validate that correct answer is in the answers array
     if (!answers.includes(correctAnswer)) {
-      throw new BadRequestException('Correct answer must be one of the provided answer choices');
+      throw new BadRequestException(
+        'Correct answer must be one of the provided answer choices',
+      );
     }
 
     // Shuffle the answers array
@@ -40,8 +54,10 @@ export class QuestionsService {
   }
 
   async findAll(courseId?: number): Promise<Question[]> {
-    const whereCondition = courseId ? { courseId, isActive: true } : { isActive: true };
-    
+    const whereCondition = courseId
+      ? { courseId, isActive: true }
+      : { isActive: true };
+
     return await this.questionRepository.find({
       where: whereCondition,
       relations: ['course', 'creator', 'updater'],
@@ -70,16 +86,23 @@ export class QuestionsService {
     });
   }
 
-  async update(id: number, updateQuestionDto: UpdateQuestionDto, updatedBy: number): Promise<Question> {
+  async update(
+    id: number,
+    updateQuestionDto: UpdateQuestionDto,
+    updatedBy: number,
+  ): Promise<Question> {
     const question = await this.findOne(id);
 
     // If updating answers or correct answer, validate them
     if (updateQuestionDto.answers || updateQuestionDto.correctAnswer) {
       const answers = updateQuestionDto.answers || question.answers;
-      const correctAnswer = updateQuestionDto.correctAnswer || question.correctAnswer;
+      const correctAnswer =
+        updateQuestionDto.correctAnswer || question.correctAnswer;
 
       if (!answers.includes(correctAnswer)) {
-        throw new BadRequestException('Correct answer must be one of the provided answer choices');
+        throw new BadRequestException(
+          'Correct answer must be one of the provided answer choices',
+        );
       }
 
       // Shuffle the answers if they're being updated
@@ -96,29 +119,31 @@ export class QuestionsService {
 
   async remove(id: number): Promise<{ message: string }> {
     const question = await this.findOne(id);
-    
+
     await this.questionRepository.remove(question);
-    
+
     return { message: 'Question deleted successfully' };
   }
 
   async softDelete(id: number): Promise<{ message: string }> {
     const question = await this.findOne(id);
-    
+
     question.isActive = false;
     await this.questionRepository.save(question);
-    
+
     return { message: 'Question deactivated successfully' };
   }
 
-  async answerQuestion(answerQuestionDto: AnswerQuestionDto): Promise<QuizResultDto> {
+  async answerQuestion(
+    answerQuestionDto: AnswerQuestionDto,
+  ): Promise<QuizResultDto> {
     const { questionId, selectedAnswer } = answerQuestionDto;
-    
+
     const question = await this.findOne(questionId);
-    
+
     const isCorrect = selectedAnswer === question.correctAnswer;
     const points = isCorrect ? question.points : 0;
-    
+
     return {
       questionId: question.id,
       question: question.question,
@@ -130,7 +155,10 @@ export class QuestionsService {
     };
   }
 
-  async getRandomQuestions(courseId: number, limit: number = 10): Promise<Question[]> {
+  async getRandomQuestions(
+    courseId: number,
+    limit: number = 10,
+  ): Promise<Question[]> {
     const questions = await this.questionRepository
       .createQueryBuilder('question')
       .where('question.courseId = :courseId', { courseId })
@@ -142,7 +170,10 @@ export class QuestionsService {
     return questions;
   }
 
-  async getQuestionsByDifficulty(courseId: number, difficulty: number): Promise<Question[]> {
+  async getQuestionsByDifficulty(
+    courseId: number,
+    difficulty: number,
+  ): Promise<Question[]> {
     return await this.questionRepository.find({
       where: { courseId, difficulty, isActive: true },
       relations: ['course', 'creator'],
@@ -150,7 +181,10 @@ export class QuestionsService {
     });
   }
 
-  async getQuestionsByTags(courseId: number, tags: string[]): Promise<Question[]> {
+  async getQuestionsByTags(
+    courseId: number,
+    tags: string[],
+  ): Promise<Question[]> {
     return await this.questionRepository
       .createQueryBuilder('question')
       .where('question.courseId = :courseId', { courseId })
@@ -166,7 +200,7 @@ export class QuestionsService {
     averagePoints: number;
   }> {
     const questions = await this.findByCourse(courseId);
-    
+
     const stats = {
       totalQuestions: questions.length,
       byDifficulty: {} as Record<number, number>,
@@ -176,21 +210,63 @@ export class QuestionsService {
 
     let totalPoints = 0;
 
-    questions.forEach(question => {
+    questions.forEach((question) => {
       // Count by difficulty
-      stats.byDifficulty[question.difficulty] = (stats.byDifficulty[question.difficulty] || 0) + 1;
-      
+      stats.byDifficulty[question.difficulty] =
+        (stats.byDifficulty[question.difficulty] || 0) + 1;
+
       // Count by tags
-      question.tags?.forEach(tag => {
+      question.tags?.forEach((tag) => {
         stats.byTags[tag] = (stats.byTags[tag] || 0) + 1;
       });
-      
+
       totalPoints += question.points;
     });
 
-    stats.averagePoints = questions.length > 0 ? totalPoints / questions.length : 0;
+    stats.averagePoints =
+      questions.length > 0 ? totalPoints / questions.length : 0;
 
     return stats;
+  }
+
+  async getBulkQuestions(
+    bulkQuestionsDto: BulkQuestionsDto,
+  ): Promise<BulkQuestionsResponseDto> {
+    const { questionIds } = bulkQuestionsDto;
+
+    // Get all questions that match the provided IDs using IN clause
+    const questions = await this.questionRepository.find({
+      where: {
+        id: In(questionIds),
+        isActive: true,
+      },
+      relations: ['course', 'creator', 'updater'],
+      order: { createdAt: 'DESC' },
+    });
+
+    // Find which IDs were not found
+    const foundIds = questions.map((q) => q.id);
+    const notFound = questionIds.filter((id) => !foundIds.includes(id));
+
+    // Format the response
+    const formattedQuestions = questions.map((question) => ({
+      id: question.id,
+      questionText: question.question,
+      choices: question.answers,
+      correctAnswer: question.correctAnswer,
+      description: question.description,
+      descriptionLink: question.descriptionLink,
+      explanation: question.explanation,
+      difficulty: question.difficulty,
+      points: question.points,
+      tags: question.tags || [],
+    }));
+
+    return {
+      questions: formattedQuestions,
+      notFound,
+      totalFound: questions.length,
+    };
   }
 
   private shuffleArray<T>(array: T[]): T[] {

@@ -19,6 +19,7 @@ import { Role } from '../common/enums/role.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
+import { DeleteUserDto } from './dto/delete-user.dto';
 
 @UseFilters(new HttpExceptionFilter('users'))
 @Controller('users')
@@ -38,6 +39,13 @@ export class UsersController {
     return this.usersService.findOne(+id);
   }
 
+  @Get()
+  @Roles(Role.User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  findAll(@Param('id') id: number) {
+    return this.usersService.findAll();
+  }
+
   @Patch(':id')
   @Roles(Role.User)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -48,7 +56,7 @@ export class UsersController {
   @Delete(':id')
   @Roles(Role.User)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  remove(@Param('id') id: number) {
-    return this.usersService.remove(+id);
+  remove(@Param('id') id: number,@Body() deleteUserDto: DeleteUserDto) {
+    return this.usersService.remove(+id,deleteUserDto);
   }
 }

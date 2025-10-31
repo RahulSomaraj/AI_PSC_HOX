@@ -1,49 +1,16 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsUrl,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsInt, IsOptional, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class UpdateUserDto {
+export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
-  @IsString()
-  @MaxLength(50, { message: 'first name must be at most 50 characters' })
-  firstName?: string;
+  @Type(() => Number)
+  @IsInt({ message: 'updatedBy must be a number' })
+  updatedBy?: number;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(50, { message: 'last name must be at most 50 characters' })
-  lastName?: string;
-
-  @IsOptional()
-  @IsEmail({}, { message: 'Email must be valid' })
-  @MaxLength(254, { message: 'Email must be at most 254 characters' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : value,
-  )
-  email?: string;
-
-  @IsOptional()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'Phone number must be a 10-digit Indian mobile number',
-  })
-  phone?: string;
-
-  @IsOptional()
-  @MaxLength(2048, { message: 'photoURL is too long' })
-  @IsUrl({}, { message: 'photoURL must be a valid URL' })
-  photoURL?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters' })
-  @MaxLength(128, { message: 'Password must be at most 128 characters' })
-  password?: string;
+  @Type(() => Boolean)
+  @IsBoolean({ message: 'isActive must be a boolean value' })
+  isActive?: boolean;
 }

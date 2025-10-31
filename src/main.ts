@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { ResponseInterceptor } from './interceptors/response-interceptor';
 import { LoggingInterceptor } from './interceptors/logging-interceptors';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,33 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+
+  // Swagger API Documentation Setup
+  const config = new DocumentBuilder()
+    .setTitle('PSC Backend API')
+    .setDescription('API documentation for PSC Backend application')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addTag('auth', 'Authentication endpoints')
+    .addTag('users', 'User management endpoints')
+    .addTag('categories', 'Category management endpoints')
+    .addTag('course', 'Course management endpoints')
+    .addTag('questions', 'Question management endpoints')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
+
   if (process.env.NODE_ENV !== 'production') {
     app.useGlobalInterceptors(
       new LoggingInterceptor(),

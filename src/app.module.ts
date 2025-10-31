@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -11,6 +10,7 @@ import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { CategoriesModule } from './categories/categories.module';
 import { CourseModule } from './course/course.module';
 import { QuestionsModule } from './questions/questions.module';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -33,7 +33,9 @@ import { QuestionsModule } from './questions/questions.module';
           );
         }
 
-        return {
+        const useSSL = configService.get('DB_SSL') !== 'false';
+
+        const config: any = {
           type: 'postgres',
           host: dbHost,
           port: +dbPort,
@@ -47,6 +49,19 @@ import { QuestionsModule } from './questions/questions.module';
           acquireTimeoutMS: 10000,
           timeout: 10000,
         };
+
+        // SSL configuration for AWS RDS PostgreSQL (rds.force_ssl=1 requires SSL)
+        // The 'extra' option passes SSL config directly to the pg driver
+        // For RDS, SSL is mandatory when rds.force_ssl=1
+        if (useSSL) {
+          config.extra = {
+            ssl: {
+              rejectUnauthorized: false, // Required for RDS - allows connection without cert validation
+            },
+          };
+        }
+
+        return config;
       },
     }),
     AuthModule,

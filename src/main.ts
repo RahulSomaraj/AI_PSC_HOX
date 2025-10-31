@@ -1,8 +1,8 @@
-import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
-import { LoggingInterceptor } from './interceptors/logging-interceptors';
 import { ResponseInterceptor } from './interceptors/response-interceptor';
+import { LoggingInterceptor } from './interceptors/logging-interceptors';
+import { NestFactory } from '@nestjs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

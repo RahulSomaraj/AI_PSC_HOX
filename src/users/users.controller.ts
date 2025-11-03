@@ -10,6 +10,14 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -19,7 +27,9 @@ import { Role } from '../common/enums/role.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
+import { DeleteUserDto } from './dto/delete-user.dto';
 
+@ApiTags('users')
 @UseFilters(new HttpExceptionFilter('users'))
 @Controller('users')
 export class UsersController {
@@ -27,28 +37,72 @@ export class UsersController {
 
   @Public()
   @Post()
+  @ApiOperation({ summary: 'Create a new user' })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User created successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 409, description: 'User already exists' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get(':id')
-  @Roles(Role.User)
+  @Roles(Role.User,Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'User retrieved successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   findOne(@Param('id') id: number) {
     return this.usersService.findOne(+id);
   }
 
-  @Patch(':id')
-  @Roles(Role.User)
+  @Get()
+  @Roles(Role.User,Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiResponse({ status: 200, description: 'List of users returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  findAll() {
+    return this.usersService.findAll();
+  }
+
+  @Patch(':id')
+  @Roles(Role.User,Role.Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update user by ID' })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(+id, updateUserDto);
   }
 
-  @Delete(':id')
-  @Roles(Role.User)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  remove(@Param('id') id: number) {
-    return this.usersService.remove(+id);
-  }
+@Delete(':id')
+@Roles(Role.User,Role.Admin)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth('JWT-auth')
+@ApiOperation({ summary: 'Delete user by ID' })
+@ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+@ApiResponse({ status: 200, description: 'User deleted successfully' })
+@ApiResponse({ status: 401, description: 'Unauthorized' })
+@ApiResponse({ status: 404, description: 'User not found' })
+remove(@Param('id') id: number, @Body() deleteUserDto: DeleteUserDto) {
+  return this.usersService.remove(+id, deleteUserDto);
+}
 }

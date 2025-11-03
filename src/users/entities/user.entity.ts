@@ -45,4 +45,16 @@ export class User {
 
   @Column({ type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
+
+  @Column({ type: 'int', nullable: true })
+  createdBy: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  updatedBy: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  deletedBy: number | null;
+
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
 }

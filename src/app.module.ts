@@ -11,6 +11,8 @@ import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { CategoriesModule } from './categories/categories.module';
 import { CourseModule } from './course/course.module';
 import { QuestionsModule } from './questions/questions.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { ExamModule } from './exam/exam.module';
 
 @Module({
   imports: [
@@ -53,6 +55,8 @@ import { QuestionsModule } from './questions/questions.module';
     CategoriesModule,
     CourseModule,
     QuestionsModule,
+    EnrollmentsModule,
+    ExamModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

@@ -39,7 +39,9 @@ async function bootstrap() {
     .addTag('categories', 'Category management endpoints')
     .addTag('course', 'Course management endpoints')
     .addTag('questions', 'Question management endpoints')
+    .addTag('enrollments', 'Enrollment management endpoints')
     .addTag('exam', 'Exam management endpoints')
+    .addTag('app', 'Application endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

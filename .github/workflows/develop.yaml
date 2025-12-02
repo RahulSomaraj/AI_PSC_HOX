@@ -10,6 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 0: Verify secrets are set (without exposing values)
+      - name: Verify secrets are configured
+        run: |
+          if [ -z "${{ secrets.PSC_AWS_SSH_HOST }}" ]; then
+            echo "Error: PSC_AWS_SSH_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PSC_AWS_SSH_USER }}" ]; then
+            echo "Error: PSC_AWS_SSH_USER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PSC_AWS_SSH_PRIVATE_KEY }}" ]; then
+            echo "Error: PSC_AWS_SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured"
+          echo "Host: ${{ secrets.PSC_AWS_SSH_HOST }}"
+          echo "User: ${{ secrets.PSC_AWS_SSH_USER }}"
+      
       # Step 1: SSH into EC2 or Remote Server
       - name: SSH into EC2 and Deploy
         uses: appleboy/ssh-action@master
@@ -52,9 +71,4 @@ jobs:
             pm2 delete 0 || true  # Delete existing PM2 processes (ignore errors if none)
             pm2 start dist/main.js --name "main"
             
-            # Show PM2 status and logs
-            echo "=== PM2 Status ==="
-            pm2 status
-            echo "=== PM2 Logs (last 50 lines) ==="
-            pm2 logs main --lines 50 --nostream
 

@@ -18,6 +18,9 @@ jobs:
           username: ${{ secrets.PSC_AWS_SSH_USER }}
           key: ${{ secrets.PSC_AWS_SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 30s
+          command_timeout: 10m
+          script_stop: true
           script: |
             echo "Connected to server: $(hostname)"
             uptime  # Check server uptime to verify connection

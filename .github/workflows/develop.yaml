@@ -1,0 +1,51 @@
+name: Deploy to AWS with PM2
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: SSH into EC2 or Remote Server
+      - name: SSH into EC2 and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PSC_AWS_SSH_HOST }}
+          username: ${{ secrets.PSC_AWS_SSH_USER }}
+          key: ${{ secrets.PSC_AWS_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "Connected to server: $(hostname)"
+            uptime  # Check server uptime to verify connection
+            ll  # List project directory to verify access
+            
+            # Load NVM explicitly
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            
+            # Print Node and PM2 versions to verify
+            node -v
+            npm -v
+            pm2 -v
+            
+            # Navigate to your project directory
+            PROJECT_DIR="${{ secrets.EC2_PROJECT_DIR }}"
+            cd ${PROJECT_DIR:-AI_PSC_HOX}
+            
+            # Pull the latest changes from the GitHub repository
+            git pull origin develop
+            
+            # Install dependencies
+            npm install --legacy-peer-deps 
+            
+            # Build Node 
+            npm run build
+            
+            # Restart the PM2 process by deleting the existing instance and restarting
+            pm2 delete 0 || true  # Delete existing PM2 processes (ignore errors if none)
+            pm2 start dist/main.js --name "main"
+

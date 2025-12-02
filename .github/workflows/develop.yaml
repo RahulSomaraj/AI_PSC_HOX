@@ -20,7 +20,6 @@ jobs:
           port: 22
           timeout: 30s
           command_timeout: 10m
-          script_stop: true
           script: |
             echo "Connected to server: $(hostname)"
             uptime  # Check server uptime to verify connection

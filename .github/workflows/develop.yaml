@@ -20,6 +20,7 @@ jobs:
           port: 22
           timeout: 30s
           command_timeout: 10m
+          debug: true
           script: |
             echo "Connected to server: $(hostname)"
             uptime  # Check server uptime to verify connection
@@ -50,4 +51,10 @@ jobs:
             # Restart the PM2 process by deleting the existing instance and restarting
             pm2 delete 0 || true  # Delete existing PM2 processes (ignore errors if none)
             pm2 start dist/main.js --name "main"
+            
+            # Show PM2 status and logs
+            echo "=== PM2 Status ==="
+            pm2 status
+            echo "=== PM2 Logs (last 50 lines) ==="
+            pm2 logs main --lines 50 --nostream
 

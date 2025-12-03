@@ -25,7 +25,6 @@ import { DeleteCourseDto } from './dto/delete-course.dto';
 @ApiTags('course')
 @UseFilters(new HttpExceptionFilter('courses'))
 @Public()
-//@Roles(Role.Admin)
 @Controller('course')
 export class CourseController {
   constructor(private readonly courseService: CourseService) {}

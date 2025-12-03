@@ -8,7 +8,6 @@ import {
   Delete,
   UseGuards,
   UseFilters,
-  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,

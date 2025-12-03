@@ -1,6 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { AppService } from './app.service';
 import { EnrollmentsService } from './enrollments/enrollments.service';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -11,26 +10,8 @@ import { Role } from './common/enums/role.enum';
 @Controller()
 export class AppController {
   constructor(
-    private readonly appService: AppService,
     private readonly enrollmentsService: EnrollmentsService,
   ) {}
-
-  @Get()
-  @ApiOperation({ 
-    summary: 'Get application health check',
-    description: 'Returns a welcome message indicating the API is running',
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Returns a welcome message',
-    schema: {
-      type: 'string',
-      example: 'Hello World!',
-    },
-  })
-  getHello(): string {
-    return this.appService.getHello();
-  }
 
   @Get('dashboard')
   @UseGuards(JwtAuthGuard, RolesGuard)

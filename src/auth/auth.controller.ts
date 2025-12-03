@@ -36,7 +36,6 @@ import { GetUser } from '../common/decorators/get-user.decorator';
 @UseFilters(new HttpExceptionFilter('AuthController'))
 @Controller('auth')
 export class AuthController {
-  jwtService: any;
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')

@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   UseFilters,
-  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,7 +20,6 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { HttpExceptionFilter } from '../shared/exception-service';
-import { LoggingInterceptor } from '../interceptors/logging-interceptors';
 
 @ApiTags('categories')
 @UseFilters(new HttpExceptionFilter('Categories'))

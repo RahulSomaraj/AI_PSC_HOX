@@ -4,9 +4,23 @@ import { ResponseInterceptor } from './interceptors/response-interceptor';
 import { LoggingInterceptor } from './interceptors/logging-interceptors';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Global validation pipe to ensure all DTOs are validated
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Strip properties that don't have decorators
+      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are sent
+      transform: true, // Automatically transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: true, // Enable implicit type conversion
+      },
+      validateCustomDecorators: true, // Validate custom decorators
+    }),
+  );
 
   // Enable CORS for all origins
   app.enableCors({

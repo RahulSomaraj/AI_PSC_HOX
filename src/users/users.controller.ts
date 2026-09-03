@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   UseGuards,
   UseFilters,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -28,6 +30,11 @@ import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
 import { DeleteUserDto } from './dto/delete-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import {
+  FindUsersQueryDto,
+  SortOrder,
+  UserSortBy,
+} from './dto/find-users-query.dto';
 import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('users')
@@ -150,6 +157,41 @@ export class UsersController {
     return this.usersService.remove(userId, { deletedBy: userId });
   }
 
+  // Declared before @Get(':id') so that "count" is not swallowed by the
+  // :id parameter route.
+  @Get('count')
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Count users by role (Admin only)',
+    description:
+      'Return the number of non-deleted users, optionally narrowed to a role. Use role=user for the dashboard "Total Students" card.',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: Role,
+    description: 'Role to count; omit to count all users',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Count retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', example: 'user' },
+        count: { type: 'number', example: 1240 },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
+  count(@Query() query: FindUsersQueryDto) {
+    return this.usersService.countByRole(query.role);
+  }
+
   @Get(':id')
   @Roles(Role.Admin)
   @ApiTags('admin', 'users')
@@ -187,29 +229,87 @@ export class UsersController {
   @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
-    summary: 'Get all users',
-    description: 'Retrieve a list of all users. Requires authentication.',
+  @ApiOperation({
+    summary: 'Get all users (Admin only)',
+    description:
+      'Retrieve a paginated list of users. Filter with role=user for the students list.',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+    description: 'Page number, 1-based. Defaults to 1.',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    example: 10,
+    description: 'Rows per page, max 100. Defaults to 10.',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'joy',
+    description:
+      'Case-insensitive partial match on firstName, lastName or phone.',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: Role,
+    description: 'Filter by role. Use "user" for the students list.',
+  })
+  @ApiQuery({
+    name: 'isActive',
+    required: false,
+    type: Boolean,
+    description: 'Filter by account status.',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: UserSortBy,
+    description: 'Field to sort by. Defaults to createdAt.',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: SortOrder,
+    description: 'Sort direction. Defaults to DESC.',
+  })
+  @ApiResponse({
+    status: 200,
     description: 'List of users returned successfully',
     schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'number', example: 1 },
-          firstName: { type: 'string', example: 'John' },
-          lastName: { type: 'string', example: 'Doe' },
-          email: { type: 'string', example: 'john.doe@example.com' },
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number', example: 1 },
+              firstName: { type: 'string', example: 'John' },
+              lastName: { type: 'string', example: 'Doe' },
+              email: { type: 'string', example: 'john.doe@example.com' },
+              role: { type: 'string', example: 'user' },
+              isActive: { type: 'boolean', example: true },
+            },
+          },
         },
+        total: { type: 'number', example: 1240 },
+        page: { type: 'number', example: 1 },
+        limit: { type: 'number', example: 10 },
+        totalPages: { type: 'number', example: 124 },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() query: FindUsersQueryDto) {
+    return this.usersService.findAll(query);
   }
 
   @Patch(':id')

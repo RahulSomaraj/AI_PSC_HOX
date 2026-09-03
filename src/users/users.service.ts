@@ -13,6 +13,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import {
+  FindUsersQueryDto,
+  SortOrder,
+  UserSortBy,
+} from './dto/find-users-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -63,14 +68,67 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
-  async findAll(){
-    try{
-        const users=await this.userRepositories.find({where: { deletedAt: IsNull() }, });
-        return users;
+  async findAll(query: FindUsersQueryDto) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        role,
+        isActive,
+        sortBy = UserSortBy.CreatedAt,
+        sortOrder = SortOrder.Desc,
+      } = query;
+
+      const qb = this.userRepositories
+        .createQueryBuilder('user')
+        .where('user.deletedAt IS NULL');
+
+      if (search) {
+        qb.andWhere(
+          '(LOWER(user.firstName) LIKE LOWER(:search)' +
+            ' OR LOWER(user.lastName) LIKE LOWER(:search)' +
+            ' OR user.phone LIKE :search)',
+          { search: `%${search}%` },
+        );
       }
-    catch(err)
-    {
+
+      if (role) {
+        qb.andWhere('user.role = :role', { role });
+      }
+
+      if (isActive !== undefined) {
+        qb.andWhere('user.isActive = :isActive', { isActive });
+      }
+
+      // sortBy and sortOrder are constrained to enum values by the DTO, so
+      // they are safe to interpolate here.
+      qb.orderBy(`user.${sortBy}`, sortOrder)
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [data, total] = await qb.getManyAndCount();
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (err) {
       throw new InternalServerErrorException('Failed to retrieve users');
+    }
+  }
+
+  async countByRole(role?: Role) {
+    try {
+      const count = await this.userRepositories.count({
+        where: { ...(role ? { role } : {}), deletedAt: IsNull() },
+      });
+      return { role: role ?? 'all', count };
+    } catch (err) {
+      throw new InternalServerErrorException('Failed to count users');
     }
   }
 

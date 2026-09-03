@@ -12,6 +12,7 @@ import { CourseModule } from './course/course.module';
 import { QuestionsModule } from './questions/questions.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { ExamModule } from './exam/exam.module';
+import { AspirantProfilesModule } from './aspirant-profiles/aspirant-profiles.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -72,6 +73,7 @@ import { APP_GUARD } from '@nestjs/core';
     QuestionsModule,
     EnrollmentsModule,
     ExamModule,
+    AspirantProfilesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

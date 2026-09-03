@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:unit": "jest --testPathPatterns=unit"
+    "test:unit": "jest --testPathPatterns=unit",
+    "seed": "ts-node src/database/seed.ts",
+    "seed:fresh": "ts-node src/database/seed.ts --fresh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

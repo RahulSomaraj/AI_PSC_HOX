@@ -55,6 +55,7 @@ async function bootstrap() {
     .addTag('questions', 'Question management endpoints')
     .addTag('enrollments', 'Enrollment management endpoints')
     .addTag('exam', 'Exam management endpoints')
+    .addTag('aspirant-profiles', 'Aspirant profile management endpoints')
     .addTag('app', 'Application endpoints')
     .build();
 

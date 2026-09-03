@@ -44,6 +44,7 @@ export class QuestionsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Create a new question (Admin only)',
@@ -314,6 +315,7 @@ export class QuestionsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update question by ID (Admin only)' })
   @ApiParam({ name: 'id', type: 'string', description: 'Question ID' })
@@ -340,6 +342,7 @@ export class QuestionsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete question by ID (Admin only)' })
   @ApiParam({ name: 'id', type: 'string', description: 'Question ID' })
@@ -357,6 +360,7 @@ export class QuestionsController {
   @Delete(':id/deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Deactivate question by ID (Admin only)' })
   @ApiParam({ name: 'id', type: 'string', description: 'Question ID' })

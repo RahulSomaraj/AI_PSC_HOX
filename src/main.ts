@@ -56,6 +56,7 @@ async function bootstrap() {
     .addTag('enrollments', 'Enrollment management endpoints')
     .addTag('exam', 'Exam management endpoints')
     .addTag('app', 'Application endpoints')
+    .addTag('admin', 'Admin-only endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

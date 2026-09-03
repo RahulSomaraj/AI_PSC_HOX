@@ -27,6 +27,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('users')
 @UseFilters(new HttpExceptionFilter('users'))
@@ -36,11 +38,12 @@ export class UsersController {
 
   @Public()
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a new user',
-    description: 'Register a new user account. All fields are required except photoURL, role, createdBy, and isActive.',
+    description:
+      'Register a new user account. All fields are required except photoURL and isActive. Accounts are always created with the "user" role; admin accounts are provisioned by the seed script.',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: CreateUserDto,
     examples: {
       example1: {
@@ -51,19 +54,6 @@ export class UsersController {
           email: 'john.doe@example.com',
           phone: '9876543210',
           password: 'SecurePass123!',
-          role: 'user',
-        },
-      },
-      example2: {
-        summary: 'Create admin user',
-        value: {
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane.smith@example.com',
-          phone: '9876543211',
-          password: 'AdminPass123!',
-          role: 'admin',
-          photoURL: 'https://example.com/photos/jane.jpg',
         },
       },
     },
@@ -93,8 +83,76 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Get('me')
+  @Roles(Role.User, Role.Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get my profile',
+    description:
+      'Retrieve the profile of the authenticated user, identified by the token rather than a path parameter.',
+  })
+  @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  findMe(@GetUser('id') userId: number) {
+    return this.usersService.findOne(userId);
+  }
+
+  @Patch('me')
+  @Roles(Role.User, Role.Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update my profile',
+    description:
+      'Update the profile of the authenticated user. All fields are optional.',
+  })
+  @ApiBody({
+    type: UpdateUserDto,
+    examples: {
+      example1: {
+        summary: 'Update own details',
+        value: {
+          firstName: 'John',
+          lastName: 'Updated',
+          phone: '9876543210',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateMe(
+    @GetUser('id') userId: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(userId, {
+      ...updateUserDto,
+      updatedBy: userId,
+    });
+  }
+
+  @Delete('me')
+  @Roles(Role.User, Role.Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Delete my account',
+    description:
+      'Soft-delete the authenticated user account. No body is required - the deleter is taken from the token.',
+  })
+  @ApiResponse({ status: 200, description: 'Account deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  removeMe(@GetUser('id') userId: number) {
+    return this.usersService.remove(userId, { deletedBy: userId });
+  }
+
   @Get(':id')
-  @Roles(Role.User,Role.Admin)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -125,7 +183,8 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(Role.User,Role.Admin)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -154,7 +213,8 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.User,Role.Admin)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -206,7 +266,8 @@ export class UsersController {
   }
 
 @Delete(':id')
-@Roles(Role.User,Role.Admin)
+@Roles(Role.Admin)
+@ApiTags('admin', 'users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 @ApiOperation({ 
@@ -240,4 +301,33 @@ export class UsersController {
 remove(@Param('id') id: number, @Body() deleteUserDto: DeleteUserDto) {
   return this.usersService.remove(+id, deleteUserDto);
 }
+
+  @Patch(':id/role')
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change a user role (Admin only)',
+    description:
+      'Assign a role to a user. This is the only route that can grant admin - registration always creates a "user".',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
+  @ApiBody({
+    type: UpdateUserRoleDto,
+    examples: {
+      promote: { summary: 'Promote to admin', value: { role: 'admin' } },
+      demote: { summary: 'Demote to user', value: { role: 'user' } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Role updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateRole(
+    @Param('id') id: number,
+    @Body() updateUserRoleDto: UpdateUserRoleDto,
+  ) {
+    return this.usersService.updateRole(+id, updateUserRoleDto.role);
+  }
 }

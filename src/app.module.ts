@@ -14,6 +14,13 @@ import { QuestionsModule } from './questions/questions.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { ExamModule } from './exam/exam.module';
 import { AspirantProfilesModule } from './aspirant-profiles/aspirant-profiles.module';
+import { ExamLevelsModule } from './exam-levels/exam-levels.module';
+import { ExamPostsModule } from './exam-posts/exam-posts.module';
+import { ExamStagesModule } from './exam-stages/exam-stages.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { TopicsModule } from './topics/topics.module';
+import { SubtopicsModule } from './subtopics/subtopics.module';
+import { SyllabusModule } from './syllabus/syllabus.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -75,6 +82,15 @@ import { APP_GUARD } from '@nestjs/core';
     EnrollmentsModule,
     ExamModule,
     AspirantProfilesModule,
+    // Exam structure: level -> exam/post -> stage -> syllabus
+    ExamLevelsModule,
+    ExamPostsModule,
+    ExamStagesModule,
+    SyllabusModule,
+    // Global academic structure: subject -> topic -> subtopic
+    SubjectsModule,
+    TopicsModule,
+    SubtopicsModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

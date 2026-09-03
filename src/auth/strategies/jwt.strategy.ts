@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { RevokedToken } from '../entities/revoked-token.entity';
 import type { Request } from 'express';
 import { UserSession } from '../entities/user-session.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -61,15 +62,32 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
-    const roles = Array.isArray(payload.roles)
-      ? payload.roles
-      : payload.roles
-        ? [payload.roles]
-        : [];
+    // Read the role from the database rather than trusting the token. A role
+    // change, a deactivation or a soft delete then takes effect on the next
+    // request instead of waiting for the token to expire.
+    const userRepo = this.dataSource.getRepository(User);
+    const user = await userRepo.findOne({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true,
+        deletedAt: true,
+      },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
     return {
-      userId: payload.sub,
-      email: payload.email,
-      roles,
+      userId: user.id,
+      email: user.email,
+      roles: [user.role],
       sessionId: payload.sessionId,
     };
   }

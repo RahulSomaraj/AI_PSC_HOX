@@ -2,10 +2,19 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Role } from '../../common/enums/role.enum';
 
+// Partial unique index: an email may only be live once, but a soft-deleted
+// row keeps its email so the address can be re-registered later. Matches the
+// `{ email, deletedAt: IsNull() }` conflict check in UsersService.create().
+@Index('UQ_users_email_active', ['email'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 @Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn()
@@ -34,8 +43,8 @@ export class User {
   })
   passwordHash: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'user' })
-  role: string;
+  @Column({ type: 'varchar', length: 20, default: Role.User })
+  role: Role;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

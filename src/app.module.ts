@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
 import { CategoriesModule } from './categories/categories.module';
 import { CourseModule } from './course/course.module';
 import { QuestionsModule } from './questions/questions.module';
@@ -76,6 +77,12 @@ import { APP_GUARD } from '@nestjs/core';
     AspirantProfilesModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  // Guard order follows provider order: JwtAuthGuard must run first so that
+  // request.user is populated by the time RolesGuard reads the role off it.
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

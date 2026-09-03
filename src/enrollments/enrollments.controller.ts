@@ -36,6 +36,7 @@ export class EnrollmentsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Create a new enrollment (Admin only)',
@@ -76,6 +77,7 @@ export class EnrollmentsController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get all enrollments (Admin only)',
@@ -105,6 +107,7 @@ export class EnrollmentsController {
   @Get('stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get enrollment statistics (Admin only)',
@@ -135,6 +138,7 @@ export class EnrollmentsController {
   @Get('user/:userId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get enrollments by user ID (Admin only)',
@@ -257,6 +261,7 @@ export class EnrollmentsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Update enrollment by ID (Admin only)',
@@ -303,6 +308,7 @@ export class EnrollmentsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'enrollments')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Delete enrollment by ID (Admin only)',

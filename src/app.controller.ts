@@ -16,6 +16,7 @@ export class AppController {
   @Get('dashboard')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
+  @ApiTags('admin', 'app')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get dashboard statistics (Admin only)',

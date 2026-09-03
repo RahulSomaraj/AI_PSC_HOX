@@ -8,7 +8,6 @@ import {
   Matches,
   MaxLength,
   MinLength,
-  IsInt,
   IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -83,29 +82,6 @@ export class CreateUserDto {
       'Password must include at least 1 uppercase, 1 lowercase, 1 number, and 1 special character',
   })
   password: string;
-
-  @ApiPropertyOptional({
-    description: 'User role',
-    example: 'user',
-    enum: ['user', 'admin'],
-    default: 'user',
-  })
-  @IsOptional()
-  @IsString({ message: 'Role must be a string' })
-  @Matches(/^(user|admin)$/, {
-    message: 'Role must be one of: user, admin',
-  })
-  role?: string;
-
-  @ApiPropertyOptional({
-    description: 'ID of the user creating this account',
-    example: 1,
-    type: Number,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'createdBy must be a number' })
-  createdBy?: number;
 
   @ApiPropertyOptional({
     description: 'Whether the user account is active',

@@ -11,6 +11,7 @@ import { Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
+import { Role } from '../common/enums/role.enum';
 import { DeleteUserDto } from './dto/delete-user.dto';
 
 @Injectable()
@@ -38,6 +39,7 @@ export class UsersService {
       const user = this.userRepositories.create({
         ...rest,
         passwordHash,
+        role: Role.User,
       });
       return await this.userRepositories.save(user);
     } catch (err) {
@@ -79,6 +81,16 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
 
     Object.assign(user, updateUserDto);
+    return await this.userRepositories.save(user);
+  }
+
+  async updateRole(id: number, role: Role) {
+    const user = await this.userRepositories.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    user.role = role;
     return await this.userRepositories.save(user);
   }
 

@@ -73,6 +73,17 @@ export class FindUsersQueryDto {
   role?: Role;
 
   @ApiPropertyOptional({
+    description:
+      'Filter by enrolled course - backs the "Target Exam" filter on the students screen',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'courseId must be an integer' })
+  @Min(1, { message: 'courseId must be at least 1' })
+  courseId?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by account status',
     example: true,
   })

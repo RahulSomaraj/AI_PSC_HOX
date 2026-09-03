@@ -9,6 +9,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
+import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
@@ -54,10 +55,15 @@ export class UsersService {
     }
   }
 
-  async findOne(id: number) {
+  /**
+   * `role` narrows the lookup: GET /users/:id passes Role.User so that an
+   * admin record is reported as 404 rather than rendered on the student
+   * profile page. /users/me omits it so an admin can still read itself.
+   */
+  async findOne(id: number, role?: Role) {
     try {
       const user = await this.userRepositories.findOne({
-        where: { id, deletedAt: IsNull() },
+        where: { id, ...(role ? { role } : {}), deletedAt: IsNull() },
       });
       if (!user) {
         throw new NotFoundException('User not found');
@@ -75,6 +81,7 @@ export class UsersService {
         limit = 10,
         search,
         role,
+        courseId,
         isActive,
         sortBy = UserSortBy.CreatedAt,
         sortOrder = SortOrder.Desc,
@@ -99,6 +106,20 @@ export class UsersService {
 
       if (isActive !== undefined) {
         qb.andWhere('user.isActive = :isActive', { isActive });
+      }
+
+      // EXISTS rather than a join: a student with two enrollments in the same
+      // course would otherwise appear twice and inflate the total.
+      if (courseId) {
+        qb.andWhere(
+          `EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(Enrollment, 'enrollment')
+            .where('enrollment.userId = user.id')
+            .andWhere('enrollment.courseId = :courseId')
+            .getQuery()}`,
+        ).setParameter('courseId', courseId);
       }
 
       // sortBy and sortOrder are constrained to enum values by the DTO, so
@@ -139,6 +160,16 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
 
     Object.assign(user, updateUserDto);
+    return await this.userRepositories.save(user);
+  }
+
+  async updateStatus(id: number, isActive: boolean) {
+    const user = await this.userRepositories.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    user.isActive = isActive;
     return await this.userRepositories.save(user);
   }
 

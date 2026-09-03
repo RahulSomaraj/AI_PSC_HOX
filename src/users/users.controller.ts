@@ -28,8 +28,8 @@ import { Role } from '../common/enums/role.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
-import { DeleteUserDto } from './dto/delete-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import {
   FindUsersQueryDto,
   SortOrder,
@@ -197,9 +197,10 @@ export class UsersController {
   @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
-    summary: 'Get user by ID',
-    description: 'Retrieve user information by user ID. Requires authentication.',
+  @ApiOperation({
+    summary: 'Get student by ID (Admin only)',
+    description:
+      'Retrieve a student by ID. Only accounts with the "user" role are returned - an admin ID reports 404.',
   })
   @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
   @ApiResponse({
@@ -219,9 +220,12 @@ export class UsersController {
     },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({
+    status: 404,
+    description: 'Student not found, or the ID belongs to an admin',
+  })
   findOne(@Param('id') id: number) {
-    return this.usersService.findOne(+id);
+    return this.usersService.findOne(+id, Role.User);
   }
 
   @Get()
@@ -261,6 +265,14 @@ export class UsersController {
     required: false,
     enum: Role,
     description: 'Filter by role. Use "user" for the students list.',
+  })
+  @ApiQuery({
+    name: 'courseId',
+    required: false,
+    type: Number,
+    example: 1,
+    description:
+      'Filter by enrolled course - backs the "Target Exam" filter. Matches students with at least one enrollment in the course.',
   })
   @ApiQuery({
     name: 'isActive',
@@ -371,21 +383,10 @@ export class UsersController {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 @ApiOperation({ 
-  summary: 'Delete user by ID',
-  description: 'Delete a user account. Requires password confirmation in the request body.',
+  summary: 'Delete user by ID (Admin only)',
+  description: 'Soft-delete a user account. No body is required - the deleter is taken from the token.',
 })
 @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
-@ApiBody({ 
-  type: DeleteUserDto,
-  examples: {
-    example1: {
-      summary: 'Delete user',
-      value: {
-        deletedBy: 1,
-      },
-    },
-  },
-})
 @ApiResponse({ 
   status: 200, 
   description: 'User deleted successfully',
@@ -398,9 +399,38 @@ export class UsersController {
 })
 @ApiResponse({ status: 401, description: 'Unauthorized' })
 @ApiResponse({ status: 404, description: 'User not found' })
-remove(@Param('id') id: number, @Body() deleteUserDto: DeleteUserDto) {
-  return this.usersService.remove(+id, deleteUserDto);
+remove(@Param('id') id: number, @GetUser('id') adminId: number) {
+  return this.usersService.remove(+id, { deletedBy: adminId });
 }
+
+  @Patch(':id/status')
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Activate or deactivate a user (Admin only)',
+    description:
+      'Toggle the account status. Backs the Status control on the students list and the Deactivate button on the student profile.',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
+  @ApiBody({
+    type: UpdateUserStatusDto,
+    examples: {
+      deactivate: { summary: 'Deactivate', value: { isActive: false } },
+      activate: { summary: 'Activate', value: { isActive: true } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateStatus(
+    @Param('id') id: number,
+    @Body() updateUserStatusDto: UpdateUserStatusDto,
+  ) {
+    return this.usersService.updateStatus(+id, updateUserStatusDto.isActive);
+  }
 
   @Patch(':id/role')
   @Roles(Role.Admin)

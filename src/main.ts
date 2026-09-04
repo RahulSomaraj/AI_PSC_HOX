@@ -57,6 +57,9 @@ async function bootstrap() {
     .addTag('exam', 'Exam management endpoints')
     .addTag('aspirant-profiles', 'Aspirant profile management endpoints')
     .addTag('app', 'Application endpoints')
+    .addTag('subjects', 'Subject management endpoints')
+    .addTag('topics', 'Topic management endpoints')
+    .addTag('subtopics', 'Subtopic management endpoints')
     .addTag('admin', 'Admin-only endpoints')
     .build();
 

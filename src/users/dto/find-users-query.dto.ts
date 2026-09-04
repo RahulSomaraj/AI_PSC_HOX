@@ -84,6 +84,17 @@ export class FindUsersQueryDto {
   courseId?: number;
 
   @ApiPropertyOptional({
+    description:
+      'Filter by assigned batch - backs the "All Batches" filter on the students screen. Matches through the aspirant profile, so a student without one never matches.',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'batchId must be an integer' })
+  @Min(1, { message: 'batchId must be at least 1' })
+  batchId?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by account status',
     example: true,
   })

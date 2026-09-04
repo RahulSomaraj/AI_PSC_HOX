@@ -4,11 +4,13 @@ import {
   DeleteDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Batch } from '../../batches/entities/batch.entity';
 
 @Entity({ name: 'aspirant_profiles' })
 export class AspirantProfile {
@@ -21,6 +23,22 @@ export class AspirantProfile {
   @OneToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  // Server-generated on create from the psc_id_seq sequence, never accepted
+  // from the client. Plain unique, not a partial index: a number drawn from
+  // the sequence is never reused, so a soft-deleted profile keeps its id
+  // reserved for good.
+  //
+  // Nullable in the database so the column can be added to a table that
+  // already holds rows; the service always populates it on create.
+  @Column({
+    name: 'psc_id',
+    type: 'varchar',
+    length: 20,
+    unique: true,
+    nullable: true,
+  })
+  pscId: string | null;
 
   @Column({ name: 'date_of_birth', type: 'date' })
   dateOfBirth: string;
@@ -39,6 +57,17 @@ export class AspirantProfile {
 
   @Column({ name: 'preferred_language', type: 'varchar', length: 10, default: 'ml' })
   preferredLanguage: string;
+
+  // Nullable: an aspirant need not be assigned to a batch.
+  // RESTRICT: a batch holding aspirants cannot be hard-deleted out from
+  // under them. BatchesService.remove() enforces the same rule for soft
+  // deletes, which the constraint does not cover.
+  @Column({ name: 'batch_id', type: 'int', nullable: true })
+  batchId: number | null;
+
+  @ManyToOne(() => Batch, { onDelete: 'RESTRICT', nullable: true })
+  @JoinColumn({ name: 'batch_id' })
+  batch: Batch | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

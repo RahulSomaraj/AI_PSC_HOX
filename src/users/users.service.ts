@@ -7,9 +7,10 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Repository, IsNull } from 'typeorm';
+import { DataSource, In, Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
 import { Enrollment } from '../enrollments/entities/enrollment.entity';
+import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
@@ -25,7 +26,39 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepositories: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
+
+  /**
+   * pscId lives on aspirant_profiles, and the User entity carries no inverse
+   * relation to join through. Rather than reshaping the main query - and the
+   * count its pagination depends on - the ids for the current page are looked
+   * up in one bounded follow-up query and attached to the rows.
+   *
+   * A user with no aspirant profile, or one predating the pscId column, gets
+   * null.
+   */
+  private async attachPscIds<T extends { id: number }>(
+    users: T[],
+  ): Promise<Array<T & { pscId: string | null }>> {
+    if (users.length === 0) return [];
+
+    const profiles = await this.dataSource
+      .getRepository(AspirantProfile)
+      .find({
+        where: { userId: In(users.map((user) => user.id)), deletedAt: IsNull() },
+        select: { userId: true, pscId: true },
+      });
+
+    const pscIdByUserId = new Map(
+      profiles.map((profile) => [profile.userId, profile.pscId]),
+    );
+
+    return users.map((user) => ({
+      ...user,
+      pscId: pscIdByUserId.get(user.id) ?? null,
+    }));
+  }
 
   async create(createUserDto: CreateUserDto) {
     try {
@@ -82,6 +115,7 @@ export class UsersService {
         search,
         role,
         courseId,
+        batchId,
         isActive,
         sortBy = UserSortBy.CreatedAt,
         sortOrder = SortOrder.Desc,
@@ -122,6 +156,23 @@ export class UsersService {
         ).setParameter('courseId', courseId);
       }
 
+      // Batch assignment lives on the aspirant profile, not on the user, so
+      // the match goes through that table. The deletedAt condition is stated
+      // explicitly rather than relying on the @DeleteDateColumn filter, which
+      // applies to entity reads and not to a hand-built subquery.
+      if (batchId) {
+        qb.andWhere(
+          `EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(AspirantProfile, 'aspirantProfile')
+            .where('aspirantProfile.userId = user.id')
+            .andWhere('aspirantProfile.batchId = :batchId')
+            .andWhere('aspirantProfile.deletedAt IS NULL')
+            .getQuery()}`,
+        ).setParameter('batchId', batchId);
+      }
+
       // sortBy and sortOrder are constrained to enum values by the DTO, so
       // they are safe to interpolate here.
       qb.orderBy(`user.${sortBy}`, sortOrder)
@@ -131,7 +182,7 @@ export class UsersService {
       const [data, total] = await qb.getManyAndCount();
 
       return {
-        data,
+        data: await this.attachPscIds(data),
         total,
         page,
         limit,

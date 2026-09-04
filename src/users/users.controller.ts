@@ -275,6 +275,14 @@ export class UsersController {
       'Filter by enrolled course - backs the "Target Exam" filter. Matches students with at least one enrollment in the course.',
   })
   @ApiQuery({
+    name: 'batchId',
+    required: false,
+    type: Number,
+    example: 1,
+    description:
+      'Filter by assigned batch - backs the "All Batches" filter. Matched through the aspirant profile, so a student without one never matches.',
+  })
+  @ApiQuery({
     name: 'isActive',
     required: false,
     type: Boolean,
@@ -309,6 +317,13 @@ export class UsersController {
               email: { type: 'string', example: 'john.doe@example.com' },
               role: { type: 'string', example: 'user' },
               isActive: { type: 'boolean', example: true },
+              pscId: {
+                type: 'string',
+                nullable: true,
+                example: 'PSC123',
+                description:
+                  'Read from the aspirant profile. Null when the user has no profile.',
+              },
             },
           },
         },

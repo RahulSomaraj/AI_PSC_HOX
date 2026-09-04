@@ -112,6 +112,16 @@ export class CreateAspirantProfileDto {
   preferredLanguage?: string;
 
   @ApiPropertyOptional({
+    description: 'ID of the batch the aspirant is assigned to',
+    example: 1,
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'batchId must be a number' })
+  batchId?: number;
+
+  @ApiPropertyOptional({
     description: 'ID of the user creating this profile',
     example: 1,
     type: Number,

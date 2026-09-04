@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { Batch, BatchShift } from './entities/batch.entity';
+import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 
@@ -19,6 +20,8 @@ export class BatchesService {
   constructor(
     @InjectRepository(Batch)
     private readonly batchRepository: Repository<Batch>,
+    @InjectRepository(AspirantProfile)
+    private readonly aspirantProfileRepository: Repository<AspirantProfile>,
   ) {}
 
   /**
@@ -129,6 +132,18 @@ export class BatchesService {
   async remove(id: number, userId: number): Promise<{ message: string }> {
     try {
       const batch = await this.findOne(id);
+
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a batch out from under its aspirants would leave them
+      // pointing at a row nothing can see, so it is refused here instead.
+      const assigned = await this.aspirantProfileRepository.count({
+        where: { batchId: batch.id, deletedAt: IsNull() },
+      });
+      if (assigned > 0) {
+        throw new ConflictException(
+          `Cannot delete this batch: ${assigned} aspirant${assigned === 1 ? ' is' : 's are'} still assigned to it`,
+        );
+      }
 
       await this.batchRepository.update(batch.id, {
         deletedAt: new Date(),

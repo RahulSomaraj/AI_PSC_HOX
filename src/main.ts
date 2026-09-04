@@ -60,6 +60,7 @@ async function bootstrap() {
     .addTag('subjects', 'Subject management endpoints')
     .addTag('topics', 'Topic management endpoints')
     .addTag('subtopics', 'Subtopic management endpoints')
+    .addTag('batches', 'Batch management endpoints')
     .addTag('admin', 'Admin-only endpoints')
     .build();
 

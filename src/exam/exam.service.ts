@@ -57,6 +57,16 @@ export class ExamService {
     const exam = this.examRepository.create({
       userId,
       courseId: createExamDto.courseId,
+      // Stored only when the caller actually named the attempt. A title that
+      // trims to nothing is normalised to null so it takes the same fallback
+      // path as an omitted one, rather than rendering as a blank label.
+      //
+      // The course name is deliberately not written here: it would be a copy
+      // frozen at creation time, going stale the moment the course is
+      // renamed, and it would erase the difference between an attempt nobody
+      // named and one named after its course on purpose. The fallback is
+      // applied when the response is built instead.
+      title: createExamDto.title?.trim() || null,
       questionIds,
       maxQuestions: randomQuestions.length,
       status: 'pending',
@@ -78,6 +88,7 @@ export class ExamService {
       examId: savedExam.id,
       courseId: savedExam.courseId,
       courseName: course.courseName,
+      title: savedExam.title ?? course.courseName,
       status: savedExam.status,
       maxQuestions: savedExam.maxQuestions,
       totalQuestions: savedExam.maxQuestions,
@@ -127,6 +138,7 @@ export class ExamService {
       examId: exam.id,
       courseId: exam.courseId,
       courseName: exam.course?.courseName || 'Unknown',
+      title: exam.title ?? exam.course?.courseName ?? 'Unknown',
       status: exam.status,
       maxQuestions: exam.maxQuestions,
       totalQuestions: exam.maxQuestions,
@@ -225,6 +237,7 @@ export class ExamService {
       examId: exam.id,
       courseId: exam.courseId,
       courseName: exam.course?.courseName || 'Unknown',
+      title: exam.title ?? exam.course?.courseName ?? 'Unknown',
       status: exam.status,
       score,
       totalPossibleScore,
@@ -278,6 +291,7 @@ export class ExamService {
       examId: exam.id,
       courseId: exam.courseId,
       courseName: exam.course?.courseName || 'Unknown',
+      title: exam.title ?? exam.course?.courseName ?? 'Unknown',
       status: exam.status,
       maxQuestions: exam.maxQuestions,
       totalQuestions: exam.maxQuestions,

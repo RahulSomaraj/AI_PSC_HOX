@@ -36,6 +36,7 @@ import {
   UserSortBy,
 } from './dto/find-users-query.dto';
 import { GetUser } from '../common/decorators/get-user.decorator';
+import { UserExamDto } from './dto/user-exam.dto';
 
 @ApiTags('users')
 @UseFilters(new HttpExceptionFilter('users'))
@@ -226,6 +227,37 @@ export class UsersController {
   })
   findOne(@Param('id') id: number) {
     return this.usersService.findOne(+id, Role.User);
+  }
+
+  // Two segments, so this cannot be swallowed by @Get(':id') above it and
+  // needs no particular ordering.
+  @Get(':id/exams')
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: "Get a student's exam attempts (Admin only)",
+    description:
+      'Backs the Mock Test Scores panel on the student profile. Returns ' +
+      'completed attempts only, newest first - a pending attempt has no ' +
+      'score and no date to show. As with GET /users/:id, only accounts with ' +
+      'the "user" role are served; an admin ID reports 404.',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: 'Exam attempts retrieved successfully',
+    type: [UserExamDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
+  @ApiResponse({
+    status: 404,
+    description: 'Student not found, or the ID belongs to an admin',
+  })
+  findExams(@Param('id') id: number) {
+    return this.usersService.findExamsForUser(+id);
   }
 
   @Get()

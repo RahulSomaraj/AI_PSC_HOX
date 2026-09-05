@@ -7,10 +7,12 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { DataSource, In, Repository, IsNull } from 'typeorm';
+import { DataSource, In, Not, Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
 import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
+import { Exam } from '../exam/entities/exam.entity';
+import { UserExamDto } from './dto/user-exam.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
@@ -190,6 +192,68 @@ export class UsersService {
       };
     } catch (err) {
       throw new InternalServerErrorException('Failed to retrieve users');
+    }
+  }
+
+  /**
+   * The Mock Test Scores panel on the student profile: this student's
+   * completed exam attempts, newest first.
+   *
+   * Scoped through findOne(id, Role.User) so that an unknown id and an admin
+   * id both report 404 - the same population GET /users/:id serves, so the
+   * profile and its panel cannot disagree about which students exist.
+   *
+   * Completed attempts only. A pending or in-progress one has no score and no
+   * completion date, so it would render as an empty row; filtering here is
+   * also what lets every field on UserExamDto be non-null.
+   *
+   * The Exam repository is reached through the DataSource rather than
+   * forFeature, matching how this service already reads AspirantProfile and
+   * Enrollment.
+   */
+  async findExamsForUser(id: number): Promise<UserExamDto[]> {
+    try {
+      await this.findOne(id, Role.User);
+
+      const exams = await this.dataSource.getRepository(Exam).find({
+        where: {
+          userId: id,
+          status: 'completed',
+          // status is the semantic filter; this keeps a row whose status was
+          // set without a date from sorting into the middle of the list and
+          // breaking the non-null promise UserExamDto makes.
+          completedAt: Not(IsNull()),
+        },
+        // Only the columns the panel draws. The costly parts of an exam row
+        // are the questionIds and answers JSON blobs, and a list of scores
+        // has no use for either.
+        select: {
+          id: true,
+          title: true,
+          score: true,
+          totalPossibleScore: true,
+          completedAt: true,
+          course: { courseName: true },
+        },
+        // Loaded for the title fallback alone, narrowed to the one column.
+        relations: { course: true },
+        order: { completedAt: 'DESC', id: 'DESC' },
+      });
+
+      return exams.map((exam) => ({
+        examId: exam.id,
+        // Same fallback ExamService applies: an attempt that was never named
+        // shows its course name rather than a blank label.
+        title: exam.title ?? exam.course?.courseName ?? 'Unknown',
+        score: exam.score ?? 0,
+        totalPossibleScore: exam.totalPossibleScore ?? 0,
+        completedAt: exam.completedAt!,
+      }));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException(
+        'Failed to retrieve exams for user',
+      );
     }
   }
 

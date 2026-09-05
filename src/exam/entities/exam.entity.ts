@@ -29,6 +29,16 @@ export class Exam {
   @JoinColumn({ name: 'courseId' })
   course: Course;
 
+  // The name the attempt is shown under - "LDC Weekly Mock Test" in the Mock
+  // Test Scores panel on the student profile. Without it a panel row can only
+  // be labelled by its course, which is the same string for every attempt a
+  // student makes on that course.
+  //
+  // Nullable so synchronize can add the column to a table that already holds
+  // attempts; those keep null and fall back to the course name for display.
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  title: string | null;
+
   @Column({ type: 'json' })
   questionIds: number[]; // Array of question IDs in the exam
 

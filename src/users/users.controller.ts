@@ -304,7 +304,7 @@ export class UsersController {
     type: Number,
     example: 1,
     description:
-      'Filter by enrolled course - backs the "Target Exam" filter. Matches students with at least one enrollment in the course.',
+      'Filter by enrolled course. Matches students with at least one enrollment in the course. For the exam a student is preparing for, use targetExamId.',
   })
   @ApiQuery({
     name: 'batchId',
@@ -313,6 +313,14 @@ export class UsersController {
     example: 1,
     description:
       'Filter by assigned batch - backs the "All Batches" filter. Matched through the aspirant profile, so a student without one never matches.',
+  })
+  @ApiQuery({
+    name: 'targetExamId',
+    required: false,
+    type: Number,
+    example: 1,
+    description:
+      'Filter by target exam - backs the "Target Exam" filter. Takes an exam_posts ID, not an exams one. Matched through the aspirant profile, so a student without one never matches.',
   })
   @ApiQuery({
     name: 'isActive',

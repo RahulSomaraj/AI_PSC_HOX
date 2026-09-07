@@ -10,6 +10,7 @@ import { IsNull, Not, Repository } from 'typeorm';
 import { ExamPost } from './entities/exam-post.entity';
 import { ExamLevel } from '../exam-levels/entities/exam-level.entity';
 import { ExamStage } from '../exam-stages/entities/exam-stage.entity';
+import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
 import { CreateExamPostDto } from './dto/create-exam-post.dto';
 import { UpdateExamPostDto } from './dto/update-exam-post.dto';
 
@@ -25,6 +26,8 @@ export class ExamPostsService {
     private readonly examLevelRepository: Repository<ExamLevel>,
     @InjectRepository(ExamStage)
     private readonly examStageRepository: Repository<ExamStage>,
+    @InjectRepository(AspirantProfile)
+    private readonly aspirantProfileRepository: Repository<AspirantProfile>,
   ) {}
 
   /** A post may only hang off a level that exists and is still live. */
@@ -169,6 +172,19 @@ export class ExamPostsService {
       if (stages > 0) {
         throw new ConflictException(
           `Cannot delete this exam post: ${stages} exam stage${stages === 1 ? ' is' : 's are'} still defined for it`,
+        );
+      }
+
+      // Aspirants point at a post from the other direction, through
+      // aspirant_profiles.target_exam_id. Same reasoning as the stage guard
+      // above: RESTRICT covers hard deletes only, and soft deleting the post
+      // would leave those profiles targeting a row nothing can see.
+      const aspirants = await this.aspirantProfileRepository.count({
+        where: { targetExamId: examPost.id, deletedAt: IsNull() },
+      });
+      if (aspirants > 0) {
+        throw new ConflictException(
+          `Cannot delete this exam post: ${aspirants} aspirant${aspirants === 1 ? ' is' : 's are'} still targeting it`,
         );
       }
 

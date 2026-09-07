@@ -118,6 +118,7 @@ export class UsersService {
         role,
         courseId,
         batchId,
+        targetExamId,
         isActive,
         sortBy = UserSortBy.CreatedAt,
         sortOrder = SortOrder.Desc,
@@ -173,6 +174,27 @@ export class UsersService {
             .andWhere('aspirantProfile.deletedAt IS NULL')
             .getQuery()}`,
         ).setParameter('batchId', batchId);
+      }
+
+      // The exam a student is preparing for, which lives on the aspirant
+      // profile like the batch does - so the same EXISTS shape, and the same
+      // explicit deletedAt condition, which a hand-built subquery does not
+      // get from the @DeleteDateColumn filter.
+      //
+      // A distinct alias from the batch subquery above: both can be applied
+      // to one request, and two subqueries of the same builder sharing an
+      // alias is asking for them to collide.
+      if (targetExamId) {
+        qb.andWhere(
+          `EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(AspirantProfile, 'targetProfile')
+            .where('targetProfile.userId = user.id')
+            .andWhere('targetProfile.targetExamId = :targetExamId')
+            .andWhere('targetProfile.deletedAt IS NULL')
+            .getQuery()}`,
+        ).setParameter('targetExamId', targetExamId);
       }
 
       // sortBy and sortOrder are constrained to enum values by the DTO, so

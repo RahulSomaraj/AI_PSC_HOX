@@ -74,7 +74,7 @@ export class FindUsersQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Filter by enrolled course - backs the "Target Exam" filter on the students screen',
+      'Filter by enrolled course. Matches students with at least one enrollment in the course. For the exam a student is preparing for, use targetExamId.',
     example: 1,
   })
   @IsOptional()
@@ -93,6 +93,17 @@ export class FindUsersQueryDto {
   @IsInt({ message: 'batchId must be an integer' })
   @Min(1, { message: 'batchId must be at least 1' })
   batchId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Filter by target exam - backs the "Target Exam" filter on the students screen. Takes an exam_posts ID, not an exams one. Matches through the aspirant profile, so a student without one never matches.',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'targetExamId must be an integer' })
+  @Min(1, { message: 'targetExamId must be at least 1' })
+  targetExamId?: number;
 
   @ApiPropertyOptional({
     description: 'Filter by account status',

@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Batch } from '../../batches/entities/batch.entity';
+import { ExamPost } from '../../exam-posts/entities/exam-post.entity';
 
 @Entity({ name: 'aspirant_profiles' })
 export class AspirantProfile {
@@ -68,6 +69,20 @@ export class AspirantProfile {
   @ManyToOne(() => Batch, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'batch_id' })
   batch: Batch | null;
+
+  // The exam post this aspirant is preparing for - the catalog entry, not an
+  // `exams` attempt row. Nullable: an aspirant need not have settled on a
+  // target, and synchronize adds the column to a populated table.
+  //
+  // RESTRICT: a post being targeted cannot be hard-deleted out from under
+  // its aspirants. ExamPostsService.remove() enforces the same rule for soft
+  // deletes, which the constraint does not cover.
+  @Column({ name: 'target_exam_id', type: 'int', nullable: true })
+  targetExamId: number | null;
+
+  @ManyToOne(() => ExamPost, { onDelete: 'RESTRICT', nullable: true })
+  @JoinColumn({ name: 'target_exam_id' })
+  targetExam: ExamPost | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

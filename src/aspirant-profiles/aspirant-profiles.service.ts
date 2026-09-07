@@ -14,6 +14,7 @@ import { UpdateAspirantProfileDto } from './dto/update-aspirant-profile.dto';
 import { DeleteAspirantProfileDto } from './dto/delete-aspirant-profile.dto';
 import { User } from '../users/entities/user.entity';
 import { Batch } from '../batches/entities/batch.entity';
+import { ExamPost } from '../exam-posts/entities/exam-post.entity';
 
 @Injectable()
 export class AspirantProfilesService implements OnModuleInit {
@@ -24,6 +25,8 @@ export class AspirantProfilesService implements OnModuleInit {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Batch)
     private readonly batchRepository: Repository<Batch>,
+    @InjectRepository(ExamPost)
+    private readonly examPostRepository: Repository<ExamPost>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -65,6 +68,23 @@ export class AspirantProfilesService implements OnModuleInit {
     }
   }
 
+  /**
+   * An aspirant may only target an exam post that exists and is still live.
+   * The FK covers hard deletes; a soft-deleted post would otherwise satisfy
+   * the constraint while being invisible everywhere else.
+   */
+  private async assertExamPostExists(targetExamId: number) {
+    const examPost = await this.examPostRepository.findOne({
+      where: { id: targetExamId, deletedAt: IsNull() },
+      select: { id: true },
+    });
+    if (!examPost) {
+      throw new NotFoundException(
+        `Exam post with ID ${targetExamId} not found`,
+      );
+    }
+  }
+
   async create(
     createAspirantProfileDto: CreateAspirantProfileDto,
   ): Promise<AspirantProfile> {
@@ -80,6 +100,10 @@ export class AspirantProfilesService implements OnModuleInit {
 
       if (createAspirantProfileDto.batchId) {
         await this.assertBatchExists(createAspirantProfileDto.batchId);
+      }
+
+      if (createAspirantProfileDto.targetExamId) {
+        await this.assertExamPostExists(createAspirantProfileDto.targetExamId);
       }
 
       // userId is unique on the table, so a soft deleted row still blocks
@@ -185,6 +209,12 @@ export class AspirantProfilesService implements OnModuleInit {
 
       if (updateAspirantProfileDto.batchId) {
         await this.assertBatchExists(updateAspirantProfileDto.batchId);
+      }
+
+      // Truthy, like the batch check above: a null clears the target and
+      // needs no lookup, and @Min(1) on the DTO keeps a 0 from reaching here.
+      if (updateAspirantProfileDto.targetExamId) {
+        await this.assertExamPostExists(updateAspirantProfileDto.targetExamId);
       }
 
       Object.assign(profile, updateAspirantProfileDto);

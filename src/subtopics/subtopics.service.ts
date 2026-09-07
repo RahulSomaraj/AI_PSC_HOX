@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { Subtopic } from './entities/subtopic.entity';
 import { Topic } from '../topics/entities/topic.entity';
+import { Question } from '../questions/entities/question.entity';
 import { CreateSubtopicDto } from './dto/create-subtopic.dto';
 import { UpdateSubtopicDto } from './dto/update-subtopic.dto';
 
@@ -22,6 +23,8 @@ export class SubtopicsService {
     private readonly subtopicRepository: Repository<Subtopic>,
     @InjectRepository(Topic)
     private readonly topicRepository: Repository<Topic>,
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
   ) {}
 
   /** A subtopic may only hang off a topic that exists and is still live. */
@@ -155,6 +158,21 @@ export class SubtopicsService {
   async remove(id: number, userId: number): Promise<{ message: string }> {
     try {
       const subtopic = await this.findOne(id);
+
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a subtopic out from under its questions would leave them
+      // tagged to a row nothing can see, so it is refused here instead.
+      //
+      // isActive is not part of the count: questions have no deletedAt, and
+      // a deactivated question still holds the tag.
+      const questions = await this.questionRepository.count({
+        where: { subtopicId: subtopic.id },
+      });
+      if (questions > 0) {
+        throw new ConflictException(
+          `Cannot delete this subtopic: ${questions} question${questions === 1 ? ' is' : 's are'} still tagged to it`,
+        );
+      }
 
       await this.subtopicRepository.update(subtopic.id, {
         deletedAt: new Date(),

@@ -4,6 +4,7 @@ import {
   IsArray,
   ArrayMinSize,
   ArrayMaxSize,
+  IsInt,
   IsNumber,
   IsOptional,
   IsUrl,
@@ -22,6 +23,45 @@ export class CreateQuestionDto {
   @IsNumber()
   @IsNotEmpty()
   courseId: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Subject this question is tagged to. Required whenever topicId is ' +
+      'given. Send null to clear the tagging.',
+    example: 1,
+    type: Number,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt({ message: 'subjectId must be an integer' })
+  @Min(1, { message: 'subjectId must be at least 1' })
+  subjectId?: number | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Topic this question is tagged to. Must belong to subjectId, and ' +
+      'subjectId must be set. Send null to clear it.',
+    example: 1,
+    type: Number,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt({ message: 'topicId must be an integer' })
+  @Min(1, { message: 'topicId must be at least 1' })
+  topicId?: number | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Subtopic this question is tagged to. Must belong to topicId, and ' +
+      'topicId must be set. Send null to clear it.',
+    example: 1,
+    type: Number,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt({ message: 'subtopicId must be an integer' })
+  @Min(1, { message: 'subtopicId must be at least 1' })
+  subtopicId?: number | null;
 
   @ApiProperty({
     description: 'The question text',

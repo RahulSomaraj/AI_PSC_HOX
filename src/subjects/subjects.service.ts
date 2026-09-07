@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Subject } from './entities/subject.entity';
+import { Question } from '../questions/entities/question.entity';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 
@@ -21,6 +22,8 @@ export class SubjectsService {
   constructor(
     @InjectRepository(Subject)
     private readonly subjectRepository: Repository<Subject>,
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
   ) {}
 
   async create(createSubjectDto: CreateSubjectDto, userId: number) {
@@ -94,6 +97,21 @@ export class SubjectsService {
   async remove(id: number, userId: number): Promise<{ message: string }> {
     try {
       const subject = await this.findOne(id);
+
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a subject out from under its questions would leave them
+      // tagged to a row nothing can see, so it is refused here instead.
+      //
+      // isActive is not part of the count: questions have no deletedAt, and
+      // a deactivated question still holds the tag.
+      const questions = await this.questionRepository.count({
+        where: { subjectId: subject.id },
+      });
+      if (questions > 0) {
+        throw new ConflictException(
+          `Cannot delete this subject: ${questions} question${questions === 1 ? ' is' : 's are'} still tagged to it`,
+        );
+      }
 
       await this.subjectRepository.update(subject.id, {
         deletedAt: new Date(),

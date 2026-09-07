@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { Topic } from './entities/topic.entity';
 import { Subject } from '../subjects/entities/subject.entity';
+import { Question } from '../questions/entities/question.entity';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { UpdateTopicDto } from './dto/update-topic.dto';
 
@@ -22,6 +23,8 @@ export class TopicsService {
     private readonly topicRepository: Repository<Topic>,
     @InjectRepository(Subject)
     private readonly subjectRepository: Repository<Subject>,
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
   ) {}
 
   /** A topic may only hang off a subject that exists and is still live. */
@@ -151,6 +154,21 @@ export class TopicsService {
   async remove(id: number, userId: number): Promise<{ message: string }> {
     try {
       const topic = await this.findOne(id);
+
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a topic out from under its questions would leave them
+      // tagged to a row nothing can see, so it is refused here instead.
+      //
+      // isActive is not part of the count: questions have no deletedAt, and
+      // a deactivated question still holds the tag.
+      const questions = await this.questionRepository.count({
+        where: { topicId: topic.id },
+      });
+      if (questions > 0) {
+        throw new ConflictException(
+          `Cannot delete this topic: ${questions} question${questions === 1 ? ' is' : 's are'} still tagged to it`,
+        );
+      }
 
       await this.topicRepository.update(topic.id, {
         deletedAt: new Date(),

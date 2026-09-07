@@ -19,6 +19,9 @@ import { SubtopicsModule } from './subtopics/subtopics.module';
 import { BatchesModule } from './batches/batches.module';
 import { AspirantProfilesModule } from './aspirant-profiles/aspirant-profiles.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ExamLevelsModule } from './exam-levels/exam-levels.module';
+import { ExamPostsModule } from './exam-posts/exam-posts.module';
+import { ExamStagesModule } from './exam-stages/exam-stages.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -85,6 +88,10 @@ import { APP_GUARD } from '@nestjs/core';
     SubtopicsModule,
     BatchesModule,
     SubscriptionsModule,
+    // Exam hierarchy: levels -> posts -> stages.
+    ExamLevelsModule,
+    ExamPostsModule,
+    ExamStagesModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

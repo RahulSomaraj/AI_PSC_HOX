@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { ExamStage } from './entities/exam-stage.entity';
 import { ExamPost } from '../exam-posts/entities/exam-post.entity';
+import { ExamSyllabus } from '../exam-syllabi/entities/exam-syllabus.entity';
 import { CreateExamStageDto } from './dto/create-exam-stage.dto';
 import { UpdateExamStageDto } from './dto/update-exam-stage.dto';
 
@@ -22,6 +23,8 @@ export class ExamStagesService {
     private readonly examStageRepository: Repository<ExamStage>,
     @InjectRepository(ExamPost)
     private readonly examPostRepository: Repository<ExamPost>,
+    @InjectRepository(ExamSyllabus)
+    private readonly examSyllabusRepository: Repository<ExamSyllabus>,
   ) {}
 
   /**
@@ -183,10 +186,23 @@ export class ExamStagesService {
     try {
       const examStage = await this.findOne(id);
 
-      // No child guard: a stage is the leaf of the exam hierarchy today.
-      // exam_syllabi will hang off it - architecture.md gives a stage at most
-      // one syllabus - and when that table lands this method needs the same
-      // count-and-refuse guard ExamLevelsService and ExamPostsService have.
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a stage out from under its syllabus would leave it pointing
+      // at a row nothing can see, so it is refused here instead.
+      //
+      // At most one live syllabus can exist per stage - the partial unique
+      // index on exam_syllabi guarantees it - so this count is 0 or 1. It is
+      // still written as a count for symmetry with the guards in
+      // ExamLevelsService and ExamPostsService.
+      const syllabi = await this.examSyllabusRepository.count({
+        where: { examStageId: examStage.id, deletedAt: IsNull() },
+      });
+      if (syllabi > 0) {
+        throw new ConflictException(
+          'Cannot delete this exam stage: a syllabus is still attached to it',
+        );
+      }
+
       await this.examStageRepository.update(examStage.id, {
         deletedAt: new Date(),
         deletedBy: userId,

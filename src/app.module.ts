@@ -22,6 +22,8 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ExamLevelsModule } from './exam-levels/exam-levels.module';
 import { ExamPostsModule } from './exam-posts/exam-posts.module';
 import { ExamStagesModule } from './exam-stages/exam-stages.module';
+import { ExamSyllabiModule } from './exam-syllabi/exam-syllabi.module';
+import { ExamSyllabusItemsModule } from './exam-syllabus-items/exam-syllabus-items.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -92,6 +94,9 @@ import { APP_GUARD } from '@nestjs/core';
     ExamLevelsModule,
     ExamPostsModule,
     ExamStagesModule,
+    // The bridge: syllabi join exam stages to the academic taxonomy.
+    ExamSyllabiModule,
+    ExamSyllabusItemsModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

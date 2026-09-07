@@ -212,7 +212,8 @@ export class ExamStagesController {
     summary: 'Delete exam stage by ID (Admin only)',
     description:
       'Soft delete. No body is required - the deleter is taken from the ' +
-      'token.',
+      'token. Refused while a syllabus is still attached to the stage; ' +
+      'delete that first.',
   })
   @ApiParam({
     name: 'id',
@@ -224,6 +225,10 @@ export class ExamStagesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Exam stage not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'A syllabus is still attached to this stage',
+  })
   remove(@Param('id') id: number, @GetUser('id') userId: number) {
     return this.examStagesService.remove(+id, userId);
   }

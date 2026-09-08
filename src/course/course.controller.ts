@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseFilters,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,24 +15,35 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { HttpExceptionFilter } from '../shared/exception-service';
-import { Public } from '../common/decorators/public.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 import { DeleteCourseDto } from './dto/delete-course.dto';
 
+// Writes are admin-only; reads are open to any signed-in account, since
+// students browse courses. Nothing here is anonymous - this controller
+// previously carried a class-level @Public(), which made all five routes
+// reachable without a token.
 @ApiTags('course')
 @UseFilters(new HttpExceptionFilter('courses'))
-@Public()
 @Controller('course')
 export class CourseController {
   constructor(private readonly courseService: CourseService) {}
 
   @Post()
-  @ApiOperation({ 
-    summary: 'Create a new course',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'course')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Create a new course (Admin only)',
     description: 'Create a new course with a unique courseId',
   })
   @ApiBody({ 
@@ -71,22 +83,34 @@ export class CourseController {
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   create(@Body() createCourseDto: CreateCourseDto) {
     return this.courseService.create(createCourseDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all courses' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.User, Role.Admin)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get all courses',
+    description: 'Available to any signed-in account - students browse courses.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Courses retrieved successfully',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   findAll() {
     return this.courseService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.User, Role.Admin)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
     summary: 'Get course by ID',
     description: 'Retrieve course information by course ID',
   })
@@ -104,14 +128,19 @@ export class CourseController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findOne(@Param('id') id: string) {
     return this.courseService.findOne(+id);
   }
 
   @Patch(':id')
-  @ApiOperation({ 
-    summary: 'Update course by ID',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'course')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update course by ID (Admin only)',
     description: 'Update course information. All fields are optional.',
   })
   @ApiParam({ name: 'id', type: 'string', description: 'Course ID', example: '1' })
@@ -139,14 +168,20 @@ export class CourseController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   update(@Param('id') id: string, @Body() updateCourseDto: UpdateCourseDto) {
     return this.courseService.update(+id, updateCourseDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ 
-    summary: 'Delete course by ID',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'course')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Delete course by ID (Admin only)',
     description: 'Delete a course by its ID. Requires deletedBy field in request body.',
   })
   @ApiParam({ name: 'id', type: 'string', description: 'Course ID', example: '1' })
@@ -171,6 +206,8 @@ export class CourseController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   remove(@Param('id') id: string, @Body() delteCourseDto: DeleteCourseDto) {
     return this.courseService.remove(+id, delteCourseDto);

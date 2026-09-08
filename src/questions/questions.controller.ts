@@ -31,7 +31,6 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { GetUser } from '../common/decorators/get-user.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { LoggingInterceptor } from '../interceptors/logging-interceptors';
 
@@ -433,11 +432,21 @@ export class QuestionsController {
     return await this.questionsService.answerQuestion(answerQuestionDto);
   }
 
+  // Admin-only: the response includes correctAnswer and explanation for
+  // every id supplied, so this is an answer key. It was previously @Public,
+  // which made that readable with no token at all.
+  //
+  // The exam flow is unaffected - ExamService calls
+  // QuestionsService.getBulkQuestions() directly rather than over HTTP.
   @Post('bulk')
-  @Public()
-  @ApiOperation({ 
-    summary: 'Get multiple questions by IDs',
-    description: 'Retrieve multiple questions at once by providing an array of question IDs (1-50 questions)',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get multiple questions by IDs (Admin only)',
+    description:
+      'Retrieve multiple questions at once by providing an array of question IDs (1-50 questions). Returns correct answers, so it is restricted to admins.',
   })
   @ApiBody({ 
     type: BulkQuestionsDto,
@@ -472,6 +481,8 @@ export class QuestionsController {
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid request data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   async getBulkQuestions(@Body() bulkQuestionsDto: BulkQuestionsDto) {
     return await this.questionsService.getBulkQuestions(bulkQuestionsDto);
   }

@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  ParseIntPipe,
   Delete,
   UseGuards,
   UseFilters,
@@ -28,6 +29,7 @@ import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
 import { DeleteUserDto } from './dto/delete-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { UpdateStatusDto } from '../common/dto/update-status.dto';
 import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('users')
@@ -155,9 +157,10 @@ export class UsersController {
   @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
-    summary: 'Get user by ID',
-    description: 'Retrieve user information by user ID. Requires authentication.',
+  @ApiOperation({
+    summary: 'Get user by ID (Admin only)',
+    description:
+      'Retrieve one user - name, email, phone, photo, role and active flag. Backs the admin user detail page.',
   })
   @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
   @ApiResponse({
@@ -177,9 +180,13 @@ export class UsersController {
     },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
-  findOne(@Param('id') id: number) {
-    return this.usersService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.findOne(id);
   }
 
   @Get()
@@ -187,9 +194,9 @@ export class UsersController {
   @ApiTags('admin', 'users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
-    summary: 'Get all users',
-    description: 'Retrieve a list of all users. Requires authentication.',
+  @ApiOperation({
+    summary: 'Get all users (Admin only)',
+    description: 'Retrieve every user that has not been deleted.',
   })
   @ApiResponse({ 
     status: 200, 
@@ -210,6 +217,40 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Activate or deactivate a user (Admin only)',
+    description:
+      'Sets the active flag without touching any other field - the Deactivate control on the user detail page. Deactivating also revokes the live sessions, and the account is refused on its very next request.',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
+  @ApiBody({
+    type: UpdateStatusDto,
+    examples: {
+      deactivate: { summary: 'Deactivate', value: { isActive: false } },
+      activate: { summary: 'Reactivate', value: { isActive: true } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'User status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Forbidden - Admin access required, or an admin tried to deactivate their own account',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  setStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateStatusDto: UpdateStatusDto,
+    @GetUser('id') actorId: number,
+  ) {
+    return this.usersService.setStatus(id, updateStatusDto.isActive, actorId);
   }
 
   @Patch(':id')

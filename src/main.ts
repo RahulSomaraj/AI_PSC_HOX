@@ -4,7 +4,7 @@ import { ResponseInterceptor } from './interceptors/response-interceptor';
 import { LoggingInterceptor } from './interceptors/logging-interceptors';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -63,6 +63,7 @@ async function bootstrap() {
     .addTag('topics', 'Topic management endpoints')
     .addTag('subtopics', 'Subtopic management endpoints')
     .addTag('syllabus', 'Exam stage syllabus mapping endpoints')
+    .addTag('batches', 'Batch management endpoints')
     .addTag('app', 'Application endpoints')
     .addTag('admin', 'Admin-only endpoints')
     .build();
@@ -76,6 +77,13 @@ async function bootstrap() {
       new ResponseInterceptor(),
     );
   }
-  await app.listen(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen(port);
+
+  const baseUrl = (process.env.APP_URL ?? `http://localhost:${port}`).replace(
+    /\/$/,
+    '',
+  );
+  Logger.log(`Swagger UI: ${baseUrl}/docs`, 'Bootstrap');
 }
 bootstrap();

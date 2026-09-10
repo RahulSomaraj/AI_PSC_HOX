@@ -21,6 +21,7 @@ import { SubjectsModule } from './subjects/subjects.module';
 import { TopicsModule } from './topics/topics.module';
 import { SubtopicsModule } from './subtopics/subtopics.module';
 import { SyllabusModule } from './syllabus/syllabus.module';
+import { BatchesModule } from './batches/batches.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -91,6 +92,8 @@ import { APP_GUARD } from '@nestjs/core';
     SubjectsModule,
     TopicsModule,
     SubtopicsModule,
+    // Coaching cohorts, targeted at an exam post
+    BatchesModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

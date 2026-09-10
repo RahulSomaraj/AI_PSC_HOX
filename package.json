@@ -21,7 +21,8 @@
     "seed": "ts-node src/database/seed.ts",
     "seed:fresh": "ts-node src/database/seed.ts --fresh",
     "seed:admin": "ts-node -r tsconfig-paths/register src/database/seeds/admin.seed.ts",
-    "seed:subjects": "ts-node -r tsconfig-paths/register src/database/seeds/subjects-from-categories.seed.ts"
+    "seed:subjects": "ts-node -r tsconfig-paths/register src/database/seeds/subjects-from-categories.seed.ts",
+    "seed:exam-syllabus": "npm run build && node dist/database/seeds/exam-syllabus.seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

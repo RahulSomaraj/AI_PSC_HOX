@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -9,6 +10,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
+import { UserSession } from '../auth/entities/user-session.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
@@ -19,6 +21,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepositories: Repository<User>,
+    @InjectRepository(UserSession)
+    private readonly sessionRepository: Repository<UserSession>,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -82,6 +86,41 @@ export class UsersService {
 
     Object.assign(user, updateUserDto);
     return await this.userRepositories.save(user);
+  }
+
+  /**
+   * Activate or deactivate an account - the Deactivate control on the admin
+   * user detail page.
+   *
+   * Deactivating takes effect on the next request because JwtStrategy reads
+   * isActive from the database on every call. The live sessions are revoked
+   * as well, otherwise the account could keep rotating fresh tokens through
+   * POST /auth/refresh, which does not look at isActive.
+   */
+  async setStatus(id: number, isActive: boolean, actorId?: number) {
+    const user = await this.userRepositories.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    // An admin deactivating their own account would be locked out on their
+    // very next request, with no way back in.
+    if (!isActive && actorId !== undefined && id === actorId) {
+      throw new ForbiddenException('You cannot deactivate your own account');
+    }
+
+    user.isActive = isActive;
+    user.updatedBy = actorId ?? null;
+    const saved = await this.userRepositories.save(user);
+
+    if (!isActive) {
+      await this.sessionRepository.update(
+        { user: { id }, revoked: false },
+        { revoked: true },
+      );
+    }
+
+    return saved;
   }
 
   async updateRole(id: number, role: Role) {

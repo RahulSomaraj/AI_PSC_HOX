@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -16,6 +17,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { Role } from '../common/enums/role.enum';
 import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { RevokedToken } from './entities/revoked-token.entity';
@@ -61,11 +63,81 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    return await this.issueSession(findUser, req);
+  }
+
+  /**
+   * Admin login. Same credential flow as validateUser, but the account has to
+   * carry the admin role and still be active.
+   *
+   * The role is checked AFTER the password so this route cannot be used to
+   * enumerate which addresses are admin accounts: a wrong password looks the
+   * same whoever it belongs to.
+   */
+  async validateAdmin(authPayloadDto: AuthPayloadDto, req: Request) {
+    const email = authPayloadDto.email?.trim().toLowerCase();
+
+    const findUser = await this.userRepositories.findOne({
+      where: { email, deletedAt: IsNull() },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        passwordHash: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (!findUser) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await argon2.verify(
+      findUser.passwordHash,
+      authPayloadDto.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (findUser.role !== Role.Admin) {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    // JwtStrategy rejects an inactive account on every request, so an inactive
+    // admin would get a token that fails on the very next call. Fail here
+    // instead, with a message that says why.
+    if (!findUser.isActive) {
+      throw new ForbiddenException('Account is inactive');
+    }
+
+    const session = await this.issueSession(findUser, req);
+
+    return {
+      ...session,
+      admin: {
+        id: findUser.id,
+        firstName: findUser.firstName,
+        lastName: findUser.lastName,
+        email: findUser.email,
+        role: findUser.role,
+      },
+    };
+  }
+
+  /**
+   * Mints the access/refresh pair and records the session row. Shared by every
+   * login route so the token contents and session bookkeeping stay identical
+   * whichever door the caller came through.
+   */
+  private async issueSession(user: User, req: Request) {
     const sessionId = randomUUID();
     const payload = {
-      sub: findUser.id,
-      email: findUser.email,
-      roles: [findUser.role],
+      sub: user.id,
+      email: user.email,
+      roles: [user.role],
       sessionId,
     };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
@@ -73,7 +145,7 @@ export class AuthService {
 
     const session = this.sessionRepo.create({
       id: sessionId,
-      user: findUser,
+      user,
       refreshToken,
       deviceInfo: req.headers['user-agent'],
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),

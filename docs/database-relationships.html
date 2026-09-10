@@ -1,0 +1,763 @@
+<title>PSC Schema Relationships</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --ink:        #141A24;
+    --ink-soft:   #4A5464;
+    --ink-faint:  #78828F;
+    --paper:      #FFFFFF;
+    --wash:       #F4F6F9;
+    --rule:       #D7DDE5;
+    --rule-soft:  #E7EBF0;
+    --accent:     #26417E;
+    --accent-pale:#E5EAF4;
+    --caution:    #8A5A0F;
+    --caution-pale:#FBF2E0;
+    --danger:     #9A3324;
+
+    --fs-body: 9.6pt;
+    --fs-small: 8.4pt;
+    --fs-mono: 8.6pt;
+  }
+
+  @page {
+    size: A4;
+    margin: 17mm 15mm 15mm 15mm;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: var(--fs-body);
+    line-height: 1.5;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sheet {
+    max-width: 180mm;
+    margin: 0 auto;
+    padding: 0 0 12mm;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    border-bottom: 2.5pt solid var(--ink);
+    padding-bottom: 5mm;
+    margin-bottom: 7mm;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7.6pt;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 2.5mm;
+  }
+
+  h1 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 23pt;
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.012em;
+    margin: 0 0 3mm;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 10.2pt;
+    color: var(--ink-soft);
+    max-width: 132mm;
+    margin: 0 0 4.5mm;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 7mm;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7.6pt;
+    color: var(--ink-faint);
+  }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---------- sections ---------- */
+
+  section { margin-bottom: 8mm; }
+
+  h2 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 13.5pt;
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    margin: 0 0 1.5mm;
+    padding-bottom: 1.8mm;
+    border-bottom: 1pt solid var(--rule);
+    display: flex;
+    align-items: baseline;
+    gap: 3.5mm;
+  }
+  h2 .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 8.4pt;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+
+  h3 {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 10pt;
+    font-weight: 600;
+    margin: 5mm 0 2mm;
+    color: var(--ink);
+  }
+
+  .lede {
+    color: var(--ink-soft);
+    margin: 2.5mm 0 4mm;
+    max-width: 158mm;
+  }
+
+  p { margin: 0 0 2.6mm; max-width: 158mm; }
+
+  code, .t {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--fs-mono);
+    background: var(--wash);
+    padding: 0.3mm 1.1mm;
+    border-radius: 1pt;
+    color: var(--ink);
+  }
+  .t { background: none; padding: 0; font-weight: 500; }
+
+  /* ---------- island map ---------- */
+
+  .map {
+    border: 1pt solid var(--rule);
+    background: var(--wash);
+    padding: 5mm 4mm 3mm;
+    margin: 0 0 4mm;
+  }
+  .map svg { width: 100%; height: auto; display: block; }
+
+  /* ---------- chain ---------- */
+
+  .chain {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2mm;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 8.4pt;
+    background: var(--accent-pale);
+    border-left: 2.5pt solid var(--accent);
+    padding: 3mm 4mm;
+    margin: 0 0 4mm;
+  }
+  .chain .node { font-weight: 600; color: var(--accent); }
+  .chain .arr { color: var(--ink-faint); }
+  .chain .note { color: var(--ink-soft); font-size: 7.6pt; }
+
+  /* ---------- tables ---------- */
+
+  .tbl-wrap { overflow-x: auto; margin: 0 0 4mm; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-small);
+  }
+
+  thead th {
+    text-align: left;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7.2pt;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1pt solid var(--ink);
+    padding: 0 3mm 1.5mm 0;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 1.7mm 3mm 1.7mm 0;
+    border-bottom: 0.5pt solid var(--rule-soft);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.mono, th.mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--fs-mono);
+    white-space: nowrap;
+  }
+  td.name { font-weight: 500; color: var(--accent); }
+
+  .pill {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7pt;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 0.6mm 1.8mm;
+    border-radius: 1.5pt;
+    white-space: nowrap;
+  }
+  .pill.cascade { background: #FBE9E6; color: var(--danger); }
+  .pill.restrict { background: var(--accent-pale); color: var(--accent); }
+  .pill.setnull { background: var(--caution-pale); color: var(--caution); }
+  .pill.none { background: var(--wash); color: var(--ink-faint); }
+  .pill.soft { background: #E6F0E8; color: #2C5D3A; }
+  .pill.hard { background: var(--wash); color: var(--ink-soft); }
+
+  /* ---------- callout ---------- */
+
+  .note-block {
+    border-left: 2.5pt solid var(--caution);
+    background: var(--caution-pale);
+    padding: 3mm 4mm;
+    margin: 0 0 4mm;
+    font-size: var(--fs-small);
+  }
+  .note-block h4 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7.4pt;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--caution);
+    margin: 0 0 1.5mm;
+    font-weight: 600;
+  }
+  .note-block p { margin: 0 0 1.8mm; max-width: none; }
+  .note-block p:last-child { margin: 0; }
+
+  ol.findings { margin: 0; padding-left: 5mm; }
+  ol.findings li { margin-bottom: 2.6mm; padding-left: 1mm; }
+  ol.findings li:last-child { margin-bottom: 0; }
+  ol.findings b { font-weight: 600; }
+
+  .colophon {
+    margin-top: 8mm;
+    padding-top: 3mm;
+    border-top: 1pt solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 7.2pt;
+    color: var(--ink-faint);
+  }
+
+  .break { break-before: page; }
+  section, .tbl-wrap, .note-block, .chain, .map { break-inside: avoid; }
+  tr, h2, h3 { break-inside: avoid; }
+  h2, h3 { break-after: avoid; }
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <p class="eyebrow">psc-backend &middot; postgresql &middot; schema reference</p>
+    <h1>How the PSC Tables Relate</h1>
+    <p class="standfirst">Nineteen tables in three loosely-joined groups. This document traces every
+      foreign key, what each one does on delete, and the four places where the schema does not
+      constrain what the code assumes.</p>
+    <div class="meta">
+      <span><b>Source</b> src/**/*.entity.ts</span>
+      <span><b>Tables</b> 19</span>
+      <span><b>Foreign keys</b> 17</span>
+      <span><b>Generated</b> 9 Sep 2026</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span> The three groups</h2>
+    <p class="lede">The schema is not one connected graph. It is three clusters that meet only at
+      <span class="t">users</span> and <span class="t">course</span>. Knowing which cluster a table
+      belongs to explains most of its delete behaviour and most of its naming.</p>
+
+    <div class="map">
+      <svg viewBox="0 0 700 268" role="img" aria-label="Three table clusters and how they connect">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#78828F"></path>
+          </marker>
+        </defs>
+
+        <!-- Group A -->
+        <rect x="6" y="18" width="196" height="228" rx="4" fill="#FFFFFF" stroke="#D7DDE5" stroke-width="1"></rect>
+        <text x="18" y="38" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="600" fill="#26417E" letter-spacing="0.8">A &nbsp;IDENTITY &amp; ACCESS</text>
+
+        <rect x="60" y="52" width="90" height="24" rx="3" fill="#26417E"></rect>
+        <text x="105" y="68" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" font-weight="600" fill="#FFFFFF">users</text>
+
+        <rect x="18" y="106" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="58" y="120" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">user_session</text>
+
+        <rect x="110" y="106" width="82" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="151" y="120" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7" fill="#26417E">password_reset</text>
+
+        <rect x="18" y="146" width="80" height="21" rx="3" fill="#F4F6F9" stroke="#D7DDE5" stroke-width="0.8" stroke-dasharray="2.5 2"></rect>
+        <text x="58" y="160" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7" fill="#78828F">revoked-tokens</text>
+
+        <rect x="110" y="146" width="82" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="151" y="160" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7" fill="#26417E">aspirant_profiles</text>
+
+        <path d="M75,106 L95,80" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M145,106 L118,80" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M151,146 L151,132" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <text x="58" y="182" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#9A3324">no FK</text>
+
+        <rect x="18" y="200" width="174" height="34" rx="3" fill="#F4F6F9" stroke="#D7DDE5" stroke-width="0.8"></rect>
+        <text x="105" y="214" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="7.4" fill="#4A5464">Every FK here is CASCADE:</text>
+        <text x="105" y="226" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="7.4" fill="#4A5464">delete a user, the rows follow.</text>
+
+        <!-- Group B -->
+        <rect x="212" y="18" width="196" height="228" rx="4" fill="#FFFFFF" stroke="#D7DDE5" stroke-width="1"></rect>
+        <text x="224" y="38" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="600" fill="#26417E" letter-spacing="0.8">B &nbsp;COURSE &amp; QUIZ</text>
+
+        <rect x="265" y="52" width="90" height="24" rx="3" fill="#26417E"></rect>
+        <text x="310" y="68" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" font-weight="600" fill="#FFFFFF">course</text>
+
+        <rect x="224" y="106" width="78" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="263" y="120" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">questions</text>
+
+        <rect x="316" y="106" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="356" y="120" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">enrollments</text>
+
+        <rect x="270" y="146" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="310" y="160" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">exams</text>
+
+        <path d="M263,106 L288,80" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M356,106 L332,80" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M310,146 L310,80" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+
+        <rect x="224" y="200" width="80" height="21" rx="3" fill="#FFFFFF" stroke="#D7DDE5" stroke-width="0.8" stroke-dasharray="2.5 2"></rect>
+        <text x="264" y="214" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#78828F">category</text>
+        <text x="264" y="232" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#9A3324">orphan &mdash; 0 refs</text>
+
+        <text x="356" y="152" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#4A5464">exams =</text>
+        <text x="356" y="162" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#4A5464">an attempt,</text>
+        <text x="356" y="172" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#4A5464">not a paper</text>
+
+        <!-- Group C -->
+        <rect x="418" y="18" width="276" height="228" rx="4" fill="#FFFFFF" stroke="#D7DDE5" stroke-width="1"></rect>
+        <text x="430" y="38" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="600" fill="#26417E" letter-spacing="0.8">C &nbsp;EXAM CATALOG &amp; SYLLABUS</text>
+
+        <rect x="430" y="52" width="86" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="473" y="66" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">exam_levels</text>
+
+        <rect x="430" y="88" width="86" height="21" rx="3" fill="#26417E"></rect>
+        <text x="473" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" font-weight="600" fill="#FFFFFF">exam_posts</text>
+
+        <rect x="430" y="124" width="86" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="473" y="138" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">exam_stages</text>
+
+        <rect x="430" y="160" width="86" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="473" y="174" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">exam_syllabi</text>
+
+        <rect x="415" y="196" width="116" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="473" y="210" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">exam_syllabus_items</text>
+
+        <path d="M473,88 L473,77" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M473,124 L473,113" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M473,160 L473,149" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M473,196 L473,185" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+
+        <rect x="586" y="52" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="626" y="66" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">subjects</text>
+
+        <rect x="586" y="88" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="626" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">topics</text>
+
+        <rect x="586" y="124" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="626" y="138" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">subtopics</text>
+
+        <path d="M626,88 L626,77" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <path d="M626,124 L626,113" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+
+        <path d="M531,206 L560,206 L560,140 L586,138" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+        <text x="556" y="228" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#4A5464">items point at shared</text>
+        <text x="556" y="238" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#4A5464">academic rows &mdash; never copies</text>
+
+        <rect x="586" y="160" width="80" height="21" rx="3" fill="#E5EAF4" stroke="#B9C6DF" stroke-width="0.8"></rect>
+        <text x="626" y="174" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="7.6" fill="#26417E">batches</text>
+        <path d="M586,170 L524,100" stroke="#78828F" stroke-width="0.9" fill="none" marker-end="url(#ar)"></path>
+
+        <!-- cross-group links -->
+        <path d="M202,64 L265,64" stroke="#78828F" stroke-width="0.9" stroke-dasharray="3 2" fill="none"></path>
+        <text x="233" y="58" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.6" fill="#4A5464">users</text>
+
+        <path d="M408,132 L418,132" stroke="#9A3324" stroke-width="1.2" stroke-dasharray="3 2" fill="none"></path>
+        <text x="413" y="150" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="6.8" fill="#9A3324" transform="rotate(90 413 150)">no link</text>
+      </svg>
+    </div>
+
+    <p>Group <b>A</b> hangs entirely off <span class="t">users</span>. Group <b>B</b> is the older
+      course-and-quiz track, hanging off <span class="t">course</span> and <span class="t">users</span>.
+      Group <b>C</b> is the newer PSC exam catalog, joined to a shared academic hierarchy by the
+      syllabus. <b>B and C never touch</b> &mdash; which is the single most consequential fact about
+      this schema.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> Group A &middot; Identity and access</h2>
+    <p class="lede">Four tables orbit <span class="t">users</span>. Three carry a real foreign key
+      with <span class="t">CASCADE</span>; one does not carry a foreign key at all.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="mono">Child table</th>
+            <th class="mono">Column</th>
+            <th class="mono">Parent</th>
+            <th>Cardinality</th>
+            <th>On delete</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono name">user_session</td><td class="mono">user</td><td class="mono">users</td>
+            <td>many &rarr; 1</td><td><span class="pill none">NO ACTION</span></td>
+            <td>One row per login. Holds the refresh token, device string and a revoked flag.</td>
+          </tr>
+          <tr>
+            <td class="mono name">password_reset_tokens</td><td class="mono">userId</td><td class="mono">users</td>
+            <td>many &rarr; 1</td><td><span class="pill cascade">CASCADE</span></td>
+            <td>Single-use reset token with an expiry and an <span class="t">isUsed</span> flag.</td>
+          </tr>
+          <tr>
+            <td class="mono name">aspirant_profiles</td><td class="mono">user_id</td><td class="mono">users</td>
+            <td>1 &rarr; 1</td><td><span class="pill cascade">CASCADE</span></td>
+            <td>PSC-specific detail: date of birth, community category, Malayalam proficiency.
+              <span class="t">user_id</span> is unique, so a user has at most one.</td>
+          </tr>
+          <tr>
+            <td class="mono name">revoked-tokens</td><td class="mono">userId</td><td class="mono">&mdash;</td>
+            <td>&mdash;</td><td><span class="pill none">no constraint</span></td>
+            <td>Logout blacklist. <span class="t">userId</span> is a plain integer column with no
+              foreign key, so nothing stops an orphan.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-block">
+      <h4>Soft delete is not what TypeORM thinks it is</h4>
+      <p><span class="t">users.deletedAt</span> is a plain <span class="t">@Column</span>, not a
+        <span class="t">@DeleteDateColumn</span>. TypeORM therefore does <b>not</b> filter it
+        automatically &mdash; every query has to pass <span class="t">deletedAt: IsNull()</span> by
+        hand, and any query that forgets will return deleted users.</p>
+      <p>This already leaks: <span class="t">GET /aspirant-profiles</span> joins
+        <span class="t">relations: ['user']</span>, and a soft-deleted user still arrives attached to
+        their profile. Every other soft-deleted table in this schema uses a real
+        <span class="t">@DeleteDateColumn</span> and filters itself.</p>
+    </div>
+  </section>
+
+  <section class="break">
+    <h2><span class="num">03</span> Group B &middot; Course and quiz</h2>
+    <p class="lede">The original track. A course holds questions; users enrol in courses and sit
+      attempts against them.</p>
+
+    <div class="chain">
+      <span class="node">course</span><span class="arr">&rarr;</span>
+      <span class="node">questions</span>
+      <span class="note">&nbsp;&nbsp;users &rarr; enrollments &rarr; course &nbsp;&middot;&nbsp; users &rarr; exams &rarr; course</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="mono">Child table</th>
+            <th class="mono">Column</th>
+            <th class="mono">Parent</th>
+            <th>On delete</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono name">questions</td><td class="mono">courseId</td><td class="mono">course</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+            <td>Deleting a course destroys its questions.</td>
+          </tr>
+          <tr>
+            <td class="mono name">questions</td><td class="mono">createdBy</td><td class="mono">users</td>
+            <td><span class="pill setnull">SET NULL</span></td>
+            <td>Authorship survives the author. The only <span class="t">SET NULL</span> in the schema.</td>
+          </tr>
+          <tr>
+            <td class="mono name">questions</td><td class="mono">updatedBy</td><td class="mono">users</td>
+            <td><span class="pill setnull">SET NULL</span></td>
+            <td>Same, for the last editor.</td>
+          </tr>
+          <tr>
+            <td class="mono name">enrollments</td><td class="mono">userId</td><td class="mono">users</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+            <td rowspan="2">Join table between a user and a course, with a status of
+              pending / active / completed / cancelled. Note there is no unique constraint on the
+              pair, so a user can be enrolled in the same course twice.</td>
+          </tr>
+          <tr>
+            <td class="mono name">enrollments</td><td class="mono">courseId</td><td class="mono">course</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+          </tr>
+          <tr>
+            <td class="mono name">exams</td><td class="mono">userId</td><td class="mono">users</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+            <td rowspan="2">One attempt session. Carries <span class="t">questionIds</span> as a JSON
+              array, the submitted <span class="t">answers</span> map, and the score.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exams</td><td class="mono">courseId</td><td class="mono">course</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+          </tr>
+          <tr>
+            <td class="mono name">category</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td>
+            <td><span class="pill none">n/a</span></td>
+            <td>No foreign keys in either direction. Nothing in the codebase references it; a seed
+              script migrates its contents into <span class="t">subjects</span>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-block">
+      <h4>Two different things are both called an exam</h4>
+      <p><span class="t">exams</span> in this group is an <b>attempt session</b> &mdash; one user's run
+        through a set of questions. The catalog entity in Group C is <span class="t">exam_posts</span>,
+        named that way precisely because <span class="t">exams</span> was already taken and holds live
+        data.</p>
+      <p>The foreign keys pointing at <span class="t">exam_posts</span> are still named
+        <span class="t">exam_id</span>, matching the domain language. So
+        <span class="t">exam_stages.exam_id</span> means an exam <i>post</i>, while
+        <span class="t">exams.id</span> means an attempt. They are unrelated.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> Group C &middot; Exam catalog, syllabus, academic content</h2>
+    <p class="lede">Two independent hierarchies joined by a syllabus. The catalog descends from a
+      qualification band to a single stage of a single post; the academic hierarchy is global and
+      shared by every exam that needs it.</p>
+
+    <div class="chain">
+      <span class="node">exam_levels</span><span class="arr">&rarr;</span>
+      <span class="node">exam_posts</span><span class="arr">&rarr;</span>
+      <span class="node">exam_stages</span><span class="arr">&rarr;</span>
+      <span class="node">exam_syllabi</span><span class="arr">&rarr;</span>
+      <span class="node">exam_syllabus_items</span>
+      <span class="arr">&larr;</span>
+      <span class="node">subjects / topics / subtopics</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="mono">Child table</th>
+            <th class="mono">Column</th>
+            <th class="mono">Parent</th>
+            <th>On delete</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono name">exam_posts</td><td class="mono">exam_level_id</td><td class="mono">exam_levels</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>A post &mdash; Sub Inspector, LDC &mdash; sits under a qualification band such as
+              Degree Level.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_stages</td><td class="mono">exam_id</td><td class="mono">exam_posts</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Prelims, Mains, Physical Test. Stages are data, so a post may have any number in any
+              order.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabi</td><td class="mono">exam_stage_id</td><td class="mono">exam_stages</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>At most one live syllabus per stage, enforced by a partial unique index. The syllabus
+              hangs off the stage, not the post, because prelims and mains cover different ground.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabi</td><td class="mono">exam_id</td><td class="mono">exam_posts</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Denormalised on purpose, so a whole post's syllabus lists without a join. The service
+              rejects a stage that does not belong to the given post, keeping the two consistent.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabus_items</td><td class="mono">syllabus_id</td><td class="mono">exam_syllabi</td>
+            <td><span class="pill cascade">CASCADE</span></td>
+            <td>Delete a syllabus and its lines go with it.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabus_items</td><td class="mono">subject_id</td><td class="mono">subjects</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Required. Subject alone means the whole subject is in the syllabus.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabus_items</td><td class="mono">topic_id</td><td class="mono">topics</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Nullable. Present, it narrows the item to one topic.</td>
+          </tr>
+          <tr>
+            <td class="mono name">exam_syllabus_items</td><td class="mono">subtopic_id</td><td class="mono">subtopics</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Nullable. Present, it narrows the item to a single subtopic.</td>
+          </tr>
+          <tr>
+            <td class="mono name">topics</td><td class="mono">subject_id</td><td class="mono">subjects</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Fundamental Rights under Indian Constitution.</td>
+          </tr>
+          <tr>
+            <td class="mono name">subtopics</td><td class="mono">topic_id</td><td class="mono">topics</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>Article 21 under Fundamental Rights. The leaf of the hierarchy.</td>
+          </tr>
+          <tr>
+            <td class="mono name">batches</td><td class="mono">exam_id</td><td class="mono">exam_posts</td>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td>A coaching cohort targeted at one post, with a mode, dates and a head count.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Why the academic tables are not owned by an exam</h3>
+    <p>&ldquo;Indian Constitution&rdquo; is <b>one</b> row in <span class="t">subjects</span>. The
+      Degree Level, Plus Two Level, SI and LDC syllabi all reach it through
+      <span class="t">exam_syllabus_items</span>. There is no per-exam copy such as
+      &ldquo;SI Constitution&rdquo;. That is what makes the item table a bridge rather than a
+      child.</p>
+
+    <h3>Three unique indexes on one table</h3>
+    <p>An item can be mapped at three depths, so <span class="t">topic_id</span> and
+      <span class="t">subtopic_id</span> are nullable. Postgres treats NULLs in a unique index as
+      distinct values, so a single index over those columns would happily accept duplicates. The
+      table therefore carries three partial unique indexes, one per depth &mdash; subject only,
+      subject + topic, and subject + topic + subtopic.</p>
+  </section>
+
+  <section class="break">
+    <h2><span class="num">05</span> Delete semantics at a glance</h2>
+    <p class="lede">Which rows disappear, which block the delete, and which are only marked gone.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th class="mono">Behaviour</th><th class="mono">Where</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill cascade">CASCADE</span></td>
+            <td class="mono">aspirant_profiles, password_reset_tokens, enrollments, exams,
+              questions&rarr;course, exam_syllabus_items&rarr;exam_syllabi</td>
+            <td>The child has no meaning without the parent.</td>
+          </tr>
+          <tr>
+            <td><span class="pill restrict">RESTRICT</span></td>
+            <td class="mono">the whole of Group C &mdash; exam_posts, exam_stages, exam_syllabi,
+              topics, subtopics, batches, and the three academic FKs on exam_syllabus_items</td>
+            <td>Master data. Removing a subject that a live syllabus still maps must fail loudly
+              rather than silently rewrite a syllabus.</td>
+          </tr>
+          <tr>
+            <td><span class="pill setnull">SET NULL</span></td>
+            <td class="mono">questions.createdBy, questions.updatedBy</td>
+            <td>The question outlives the person who wrote it.</td>
+          </tr>
+          <tr>
+            <td><span class="pill none">none</span></td>
+            <td class="mono">revoked-tokens.userId, user_session.user, every created_by /
+              updated_by / deleted_by audit column</td>
+            <td>Not constrained at all. Audit columns are plain integers throughout.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Soft versus hard delete</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th class="mono">Mode</th><th class="mono">Tables</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill soft">SOFT</span></td>
+            <td class="mono">course, aspirant_profiles, exam_levels, exam_posts, exam_stages,
+              exam_syllabi, subjects, topics, subtopics, batches</td>
+            <td>Real <span class="t">@DeleteDateColumn</span>, filtered automatically. Each pairs it
+              with a partial unique index on <span class="t">deleted_at IS NULL</span>, so a deleted
+              row does not reserve its name forever.</td>
+          </tr>
+          <tr>
+            <td><span class="pill soft">SOFT</span></td>
+            <td class="mono">users</td>
+            <td>Manual column. Not filtered automatically &mdash; see the warning in section 02.</td>
+          </tr>
+          <tr>
+            <td><span class="pill hard">HARD</span></td>
+            <td class="mono">exam_syllabus_items, enrollments, exams, questions, category,
+              user_session, revoked-tokens, password_reset_tokens</td>
+            <td>Syllabus items are a mapping, not a record worth keeping once removed. The token
+              tables are transient by nature.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span> Where the schema does not match the intent</h2>
+    <p class="lede">Four gaps that the foreign keys cannot express, ordered by what they cost.</p>
+
+    <ol class="findings">
+      <li><b>Group B and Group C are not connected.</b> An attempt
+        (<span class="t">exams</span>) points at a <span class="t">course</span>, never at an
+        <span class="t">exam_stage</span>. A student can sit &ldquo;a random 30 from course X&rdquo;,
+        but not &ldquo;the SI Preliminary paper&rdquo;. The catalog describes exams nobody can yet
+        take, and the attempt engine runs exams the catalog does not know about. Closing this is the
+        single largest piece of work the schema implies.</li>
+
+      <li><b>Negative marking is modelled but never applied.</b>
+        <span class="t">exam_stages.negative_mark</span> exists and holds real values, which is how
+        PSC papers actually score. The grading code in the attempt engine never reads it, because it
+        cannot reach a stage from an attempt.</li>
+
+      <li><b>Question selection has no referential integrity.</b>
+        <span class="t">exams.questionIds</span> is a JSON array of integers, not a join table. A
+        question can be deleted while an attempt still references it; nothing at the database level
+        objects.</li>
+
+      <li><b>Audit columns are unconstrained.</b> Every table in Group C carries
+        <span class="t">created_by</span>, <span class="t">updated_by</span> and
+        <span class="t">deleted_by</span> as plain <span class="t">int</span>. They hold user ids
+        taken from the JWT but have no foreign key, so they can point at users who never existed.</li>
+    </ol>
+  </section>
+
+  <p class="colophon">
+    Derived from the TypeORM entity definitions under <span class="t">src/**/*.entity.ts</span>.
+    The schema is created by <span class="t">synchronize: true</span> &mdash; there are no migration
+    files, so the entities are the only source of truth.
+  </p>
+
+</div>

@@ -26,3 +26,19 @@ export function toOptionalNumber(
   }
   return parsed;
 }
+
+export function toOptionalEnum<T extends Record<string, string>>(
+  value: string | undefined,
+  field: string,
+  enumType: T,
+): T[keyof T] | undefined {
+  if (value === undefined || value === '') return undefined;
+
+  const allowed: string[] = Object.values(enumType);
+  if (!allowed.includes(value)) {
+    throw new BadRequestException(
+      `${field} must be one of: ${allowed.join(', ')}`,
+    );
+  }
+  return value as T[keyof T];
+}

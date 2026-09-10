@@ -95,6 +95,82 @@ export class AuthController {
     };
   }
 
+  @Post('admin/login')
+  @Public()
+  @ApiTags('admin')
+  @ApiOperation({
+    summary: 'Admin login',
+    description:
+      'Authenticate an admin with email and password. Same credential flow as POST /auth/login, but the account must carry the admin role and be active - a "user" account is rejected with 403 even when the password is correct. Returns the access token, refresh token, session ID and the admin profile.',
+  })
+  @ApiBody({
+    type: AuthPayloadDto,
+    examples: {
+      example1: {
+        summary: 'Admin login',
+        value: {
+          email: 'admin@example.com',
+          password: 'Admin123!',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Admin login successful',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Admin login successful' },
+        accessToken: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+        refreshToken: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+        sessionId: {
+          type: 'string',
+          example: '3f7c1b2a-9d4e-4f61-8a55-1c0b2d3e4f56',
+        },
+        admin: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            firstName: { type: 'string', example: 'Site' },
+            lastName: { type: 'string', example: 'Admin' },
+            email: { type: 'string', example: 'admin@example.com' },
+            role: { type: 'string', example: 'admin' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({
+    status: 403,
+    description: 'Admin access required, or the account is inactive',
+  })
+  async adminLogin(
+    @Body() authPayload: AuthPayloadDto,
+    @Req() req: express.Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken, sessionId, admin } =
+      await this.authService.validateAdmin(authPayload, req);
+
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+
+    return {
+      message: 'Admin login successful',
+      accessToken,
+      refreshToken,
+      sessionId,
+      admin,
+    };
+  }
+
   @Post('logout-all')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

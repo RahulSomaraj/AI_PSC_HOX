@@ -32,6 +32,15 @@ export class ExamResponseDto {
   courseName: string;
 
   @ApiProperty({
+    description:
+      'Name this attempt is shown under. Falls back to the course name when ' +
+      'the attempt has no title of its own, so it is always safe to display ' +
+      'without a placeholder.',
+    example: 'LDC Weekly Mock Test',
+  })
+  title: string;
+
+  @ApiProperty({
     description: 'Exam status',
     example: 'pending',
     enum: ['pending', 'in_progress', 'completed'],
@@ -87,6 +96,15 @@ export class ExamResultDto {
 
   @ApiProperty({ description: 'Course name', example: 'Geography Quiz' })
   courseName: string;
+
+  @ApiProperty({
+    description:
+      'Name this attempt is shown under. Falls back to the course name when ' +
+      'the attempt has no title of its own, so it is always safe to display ' +
+      'without a placeholder.',
+    example: 'LDC Weekly Mock Test',
+  })
+  title: string;
 
   @ApiProperty({
     description: 'Exam status (should be completed)',

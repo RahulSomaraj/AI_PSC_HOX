@@ -1,4 +1,13 @@
-import { IsInt, IsNotEmpty, IsOptional, Max, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Max,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateExamDto {
@@ -10,6 +19,20 @@ export class CreateExamDto {
   @IsInt()
   @IsNotEmpty()
   courseId: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Name this attempt is shown under, e.g. in the Mock Test Scores panel ' +
+      'on the student profile. Omit it and responses fall back to the course ' +
+      'name.',
+    example: 'LDC Weekly Mock Test',
+    maxLength: 150,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150, { message: 'Title must be at most 150 characters' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  title?: string;
 
   @ApiPropertyOptional({
     description: 'Maximum number of questions (1-30, defaults to 30)',

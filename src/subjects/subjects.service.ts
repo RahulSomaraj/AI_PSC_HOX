@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+<<<<<<< HEAD
 import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { Subject } from './entities/subject.entity';
 import { Topic } from '../topics/entities/topic.entity';
@@ -36,12 +37,25 @@ export interface SubjectHierarchyNode {
     }[];
   }[];
 }
+=======
+import { IsNull, Repository } from 'typeorm';
+import { Subject } from './entities/subject.entity';
+import { Question } from '../questions/entities/question.entity';
+import { CreateSubjectDto } from './dto/create-subject.dto';
+import { UpdateSubjectDto } from './dto/update-subject.dto';
+
+// Postgres unique_violation. The partial index only covers live rows, so a
+// duplicate name is reported when it collides with a subject that has not
+// been soft-deleted.
+const UNIQUE_VIOLATION = '23505';
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
 
 @Injectable()
 export class SubjectsService {
   constructor(
     @InjectRepository(Subject)
     private readonly subjectRepository: Repository<Subject>,
+<<<<<<< HEAD
     @InjectRepository(Topic)
     private readonly topicRepository: Repository<Topic>,
     @InjectRepository(Subtopic)
@@ -60,14 +74,43 @@ export class SubjectsService {
       const subject = this.subjectRepository.create({
         ...createSubjectDto,
         createdBy: actorId ?? null,
+=======
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
+  ) {}
+
+  async create(createSubjectDto: CreateSubjectDto, userId: number) {
+    try {
+      const name = createSubjectDto.name.trim();
+
+      const exists = await this.subjectRepository.findOne({
+        where: { name, deletedAt: IsNull() },
+      });
+      if (exists) {
+        throw new ConflictException('A subject with this name already exists');
+      }
+
+      const subject = this.subjectRepository.create({
+        ...createSubjectDto,
+        name,
+        createdBy: userId,
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       });
       return await this.subjectRepository.save(subject);
     } catch (err) {
       if (err instanceof HttpException) throw err;
+<<<<<<< HEAD
+=======
+      // The pre-check above loses a race; the index is the real guarantee.
+      if ((err as { code?: string })?.code === UNIQUE_VIOLATION) {
+        throw new ConflictException('A subject with this name already exists');
+      }
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       throw new InternalServerErrorException('Failed to create subject');
     }
   }
 
+<<<<<<< HEAD
   async findAll(
     filters: { isActive?: boolean; search?: string } = {},
   ): Promise<Subject[]> {
@@ -81,15 +124,34 @@ export class SubjectsService {
         order: { sortOrder: 'ASC', name: 'ASC' },
       });
     } catch {
+=======
+  async findAll() {
+    try {
+      return await this.subjectRepository.find({
+        where: { deletedAt: IsNull() },
+        order: { sortOrder: 'ASC', name: 'ASC' },
+      });
+    } catch (err) {
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       throw new InternalServerErrorException('Failed to retrieve subjects');
     }
   }
 
+<<<<<<< HEAD
   async findOne(id: number): Promise<Subject> {
     try {
       const subject = await this.subjectRepository.findOne({ where: { id } });
       if (!subject) {
         throw new NotFoundException(`Subject with ID ${id} not found`);
+=======
+  async findOne(id: number) {
+    try {
+      const subject = await this.subjectRepository.findOne({
+        where: { id, deletedAt: IsNull() },
+      });
+      if (!subject) {
+        throw new NotFoundException('Subject not found');
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       }
       return subject;
     } catch (err) {
@@ -98,6 +160,7 @@ export class SubjectsService {
     }
   }
 
+<<<<<<< HEAD
   /**
    * The whole global academic structure - subject, topic, subtopic - built
    * from three flat queries instead of a join, which keeps the payload free
@@ -196,10 +259,24 @@ export class SubjectsService {
       return await this.subjectRepository.save(subject);
     } catch (err) {
       if (err instanceof HttpException) throw err;
+=======
+  async update(id: number, updateSubjectDto: UpdateSubjectDto, userId: number) {
+    try {
+      const subject = await this.findOne(id);
+
+      Object.assign(subject, updateSubjectDto, { updatedBy: userId });
+      return await this.subjectRepository.save(subject);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      if ((err as { code?: string })?.code === UNIQUE_VIOLATION) {
+        throw new ConflictException('A subject with this name already exists');
+      }
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       throw new InternalServerErrorException('Failed to update subject');
     }
   }
 
+<<<<<<< HEAD
   async setStatus(
     id: number,
     isActive: boolean,
@@ -239,12 +316,38 @@ export class SubjectsService {
       await this.subjectRepository.save(subject);
       await this.subjectRepository.softDelete(id);
 
+=======
+  async remove(id: number, userId: number): Promise<{ message: string }> {
+    try {
+      const subject = await this.findOne(id);
+
+      // The FK is RESTRICT, but that only governs hard deletes. Soft
+      // deleting a subject out from under its questions would leave them
+      // tagged to a row nothing can see, so it is refused here instead.
+      //
+      // isActive is not part of the count: questions have no deletedAt, and
+      // a deactivated question still holds the tag.
+      const questions = await this.questionRepository.count({
+        where: { subjectId: subject.id },
+      });
+      if (questions > 0) {
+        throw new ConflictException(
+          `Cannot delete this subject: ${questions} question${questions === 1 ? ' is' : 's are'} still tagged to it`,
+        );
+      }
+
+      await this.subjectRepository.update(subject.id, {
+        deletedAt: new Date(),
+        deletedBy: userId,
+      });
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
       return { message: `Subject with ID ${id} has been successfully removed` };
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw new InternalServerErrorException('Failed to delete subject');
     }
   }
+<<<<<<< HEAD
 
   private async assertNameIsFree(name: string): Promise<void> {
     const existing = await this.subjectRepository.findOne({ where: { name } });
@@ -252,4 +355,6 @@ export class SubjectsService {
       throw new ConflictException(`Subject "${name}" already exists`);
     }
   }
+=======
+>>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
 }

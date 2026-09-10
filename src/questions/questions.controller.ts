@@ -25,12 +25,12 @@ import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { AnswerQuestionDto } from './dto/answer-question.dto';
 import { BulkQuestionsDto } from './dto/bulk-questions.dto';
+import { FindQuestionsQueryDto } from './dto/find-questions-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { GetUser } from '../common/decorators/get-user.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { LoggingInterceptor } from '../interceptors/logging-interceptors';
 
@@ -90,15 +90,41 @@ export class QuestionsController {
   }
 
   @Get()
-  @ApiOperation({ 
-    summary: 'Get all questions or filter by courseId',
-    description: 'Retrieve all questions or filter by courseId using query parameter',
+  @ApiOperation({
+    summary: 'Get all questions, optionally filtered',
+    description:
+      'Retrieve active questions. Filters are optional and combine: passing ' +
+      'courseId and subjectId returns the questions matching both. The ' +
+      'taxonomy filters match the tag on the question directly - a question ' +
+      'tagged to a subtopic carries its topic and subject too, so it is ' +
+      'found by any of the three.',
   })
-  @ApiQuery({ 
-    name: 'courseId', 
-    required: false, 
-    type: Number, 
+  @ApiQuery({
+    name: 'courseId',
+    required: false,
+    type: Number,
     description: 'Filter by course ID',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'subjectId',
+    required: false,
+    type: Number,
+    description: 'Filter by tagged subject ID',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'topicId',
+    required: false,
+    type: Number,
+    description: 'Filter by tagged topic ID',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'subtopicId',
+    required: false,
+    type: Number,
+    description: 'Filter by tagged subtopic ID',
     example: 1,
   })
   @ApiResponse({
@@ -116,11 +142,8 @@ export class QuestionsController {
       },
     },
   })
-  async findAll(@Query('courseId') courseId?: number) {
-    if (courseId) {
-      return await this.questionsService.findByCourse(+courseId);
-    }
-    return await this.questionsService.findAll();
+  async findAll(@Query() query: FindQuestionsQueryDto) {
+    return await this.questionsService.findAll(query);
   }
 
   @Get('random')
@@ -409,11 +432,21 @@ export class QuestionsController {
     return await this.questionsService.answerQuestion(answerQuestionDto);
   }
 
+  // Admin-only: the response includes correctAnswer and explanation for
+  // every id supplied, so this is an answer key. It was previously @Public,
+  // which made that readable with no token at all.
+  //
+  // The exam flow is unaffected - ExamService calls
+  // QuestionsService.getBulkQuestions() directly rather than over HTTP.
   @Post('bulk')
-  @Public()
-  @ApiOperation({ 
-    summary: 'Get multiple questions by IDs',
-    description: 'Retrieve multiple questions at once by providing an array of question IDs (1-50 questions)',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'questions')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get multiple questions by IDs (Admin only)',
+    description:
+      'Retrieve multiple questions at once by providing an array of question IDs (1-50 questions). Returns correct answers, so it is restricted to admins.',
   })
   @ApiBody({ 
     type: BulkQuestionsDto,
@@ -448,6 +481,8 @@ export class QuestionsController {
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid request data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   async getBulkQuestions(@Body() bulkQuestionsDto: BulkQuestionsDto) {
     return await this.questionsService.getBulkQuestions(bulkQuestionsDto);
   }

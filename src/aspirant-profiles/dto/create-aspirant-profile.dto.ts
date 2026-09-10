@@ -6,6 +6,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -110,6 +111,30 @@ export class CreateAspirantProfileDto {
   @IsOptional()
   @IsIn(['ml', 'en'], { message: 'preferredLanguage must be one of: ml, en' })
   preferredLanguage?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID of the batch the aspirant is assigned to',
+    example: 1,
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'batchId must be a number' })
+  batchId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID of the exam post the aspirant is preparing for. The catalog entry ' +
+      'from exam_posts, not an exams attempt row. Send null to clear a ' +
+      'target that was set in error.',
+    example: 1,
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'targetExamId must be a number' })
+  @Min(1, { message: 'targetExamId must be at least 1' })
+  targetExamId?: number;
 
   @ApiPropertyOptional({
     description: 'ID of the user creating this profile',

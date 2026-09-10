@@ -65,6 +65,10 @@ async function bootstrap() {
     .addTag('syllabus', 'Exam stage syllabus mapping endpoints')
     .addTag('batches', 'Batch management endpoints')
     .addTag('app', 'Application endpoints')
+    .addTag('subjects', 'Subject management endpoints')
+    .addTag('topics', 'Topic management endpoints')
+    .addTag('subtopics', 'Subtopic management endpoints')
+    .addTag('batches', 'Batch management endpoints')
     .addTag('admin', 'Admin-only endpoints')
     .build();
 

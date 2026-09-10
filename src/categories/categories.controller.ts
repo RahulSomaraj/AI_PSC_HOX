@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseFilters,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,11 +15,15 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { Public } from '../common/decorators/public.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 import { HttpExceptionFilter } from '../shared/exception-service';
 
 @ApiTags('categories')
@@ -27,10 +32,13 @@ import { HttpExceptionFilter } from '../shared/exception-service';
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  @Public()
   @Post()
-  @ApiOperation({ 
-    summary: 'Create a new category',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'categories')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Create a new category (Admin only)',
     description: 'Create a new question category',
   })
   @ApiBody({ 
@@ -65,25 +73,35 @@ export class CategoriesController {
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   async create(@Body() createCategoryDto: CreateCategoryDto) {
     return await this.categoriesService.create(createCategoryDto);
   }
 
-  @Public()
   @Get()
-  @ApiOperation({ summary: 'Get all categories' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'categories')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all categories (Admin only)' })
   @ApiResponse({
     status: 200,
     description: 'Categories retrieved successfully',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   async findAll() {
     return await this.categoriesService.findAll();
   }
 
-  @Public()
   @Get(':id')
-  @ApiOperation({ 
-    summary: 'Get category by ID',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'categories')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get category by ID (Admin only)',
     description: 'Retrieve a category by its ID',
   })
   @ApiParam({ name: 'id', type: 'string', description: 'Category ID', example: '1' })
@@ -99,15 +117,20 @@ export class CategoriesController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   async findOne(@Param('id') id: string) {
     return await this.categoriesService.findOne(+id);
   }
 
-  @Public()
   @Patch(':id')
-  @ApiOperation({ 
-    summary: 'Update category by ID',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'categories')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update category by ID (Admin only)',
     description: 'Update category information. All fields are optional.',
   })
   @ApiParam({ name: 'id', type: 'string', description: 'Category ID', example: '1' })
@@ -140,6 +163,8 @@ export class CategoriesController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   async update(
     @Param('id') id: string,
@@ -149,10 +174,13 @@ export class CategoriesController {
     return { message: 'Update Successfull', data };
   }
 
-  @Public()
   @Delete(':id')
-  @ApiOperation({ 
-    summary: 'Delete category by ID',
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @ApiTags('admin', 'categories')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Delete category by ID (Admin only)',
     description: 'Delete a category by its ID',
   })
   @ApiParam({ name: 'id', type: 'string', description: 'Category ID', example: '1' })
@@ -166,6 +194,8 @@ export class CategoriesController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - admin role required' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   async remove(@Param('id') id: string) {
     return await this.categoriesService.remove(+id);

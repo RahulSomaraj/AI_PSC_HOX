@@ -11,6 +11,7 @@ import { SubmitExamDto } from './dto/submit-exam.dto';
 import { ExamResponseDto, ExamResultDto } from './dto/exam-response.dto';
 import { QuestionsService } from '../questions/questions.service';
 import { Course } from '../course/entities/course.entity';
+import { AnswerLogService } from '../answer-log/answer-log.service';
 
 @Injectable()
 export class ExamService {
@@ -20,6 +21,7 @@ export class ExamService {
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
     private questionsService: QuestionsService,
+    private answerLogService: AnswerLogService,
   ) {}
 
   async create(
@@ -227,7 +229,36 @@ export class ExamService {
     exam.answers = submitExamDto.answers;
     exam.score = score;
     exam.totalPossibleScore = totalPossibleScore;
-    await this.examRepository.save(exam);
+
+    // The completed exam and its answer rows commit together. An attempt
+    // that is marked completed without its per-question rows would be
+    // invisible to Weak Subjects and to the results breakdown, with nothing
+    // to indicate anything was lost - so if the log cannot be written, the
+    // submission fails and the student can resubmit. The rows are
+    // orIgnore'd, so that retry is clean.
+    await this.examRepository.manager.transaction(async (manager) => {
+      await manager.save(exam);
+
+      await this.answerLogService.recordExamAnswers(
+        {
+          userId,
+          examId: exam.id,
+          answers: questionResults.map((result) => ({
+            questionId: result.questionId,
+            selectedAnswer: result.selectedAnswer,
+            isCorrect: result.isCorrect,
+            // Sent per question id by clients that measure it; absent until
+            // the frontend does, and null rather than 0 so "not measured" is
+            // distinguishable from "answered instantly".
+            timeTakenSec:
+              submitExamDto.timings?.[result.questionId] ??
+              submitExamDto.timings?.[String(result.questionId)] ??
+              null,
+          })),
+        },
+        manager,
+      );
+    });
 
     const percentage = totalPossibleScore > 0 
       ? Math.round((score / totalPossibleScore) * 100 * 100) / 100 

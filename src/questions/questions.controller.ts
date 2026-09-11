@@ -428,8 +428,18 @@ export class QuestionsController {
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid answer or question not found' })
-  async answerQuestion(@Body() answerQuestionDto: AnswerQuestionDto) {
-    return await this.questionsService.answerQuestion(answerQuestionDto);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // The answer is recorded against the caller, so the id comes from the
+  // token rather than the body - a practice answer cannot be filed under
+  // someone else.
+  async answerQuestion(
+    @Body() answerQuestionDto: AnswerQuestionDto,
+    @GetUser('id') userId: number,
+  ) {
+    return await this.questionsService.answerQuestion(
+      answerQuestionDto,
+      userId,
+    );
   }
 
   // Admin-only: the response includes correctAnswer and explanation for

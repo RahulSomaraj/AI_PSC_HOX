@@ -27,6 +27,7 @@ import { SyllabusModule } from './syllabus/syllabus.module';
 import { ActivityModule } from './activity/activity.module';
 import { ActivityInterceptor } from './activity/activity.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AnswerLogModule } from './answer-log/answer-log.module';
 
 @Module({
   imports: [
@@ -108,6 +109,9 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
     // Presence tracking, read by the dashboard's DAU chart
     ActivityModule,
+
+    // One row per question answered, read by Reports and the results page
+    AnswerLogModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

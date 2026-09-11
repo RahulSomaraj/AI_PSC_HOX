@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -14,6 +15,8 @@ import { UpdateQuestionDto } from './dto/update-question.dto';
 import { FindQuestionsQueryDto } from './dto/find-questions-query.dto';
 import { AnswerQuestionDto } from './dto/answer-question.dto';
 import { QuizResultDto } from './dto/quiz-result.dto';
+import { AnswerLog } from '../answer-log/entities/answer-log.entity';
+import { AnswerLogService } from '../answer-log/answer-log.service';
 import {
   BulkQuestionsDto,
   BulkQuestionsResponseDto,
@@ -30,6 +33,9 @@ export class QuestionsService {
     private topicRepository: Repository<Topic>,
     @InjectRepository(Subtopic)
     private subtopicRepository: Repository<Subtopic>,
+    @InjectRepository(AnswerLog)
+    private answerLogRepository: Repository<AnswerLog>,
+    private answerLogService: AnswerLogService,
   ) {}
 
   /**
@@ -243,8 +249,30 @@ export class QuestionsService {
     return await this.questionRepository.save(question);
   }
 
+  /**
+   * Hard delete, refused once anyone has answered the question.
+   *
+   * answer_log.question_id is RESTRICT, so the delete would fail at the
+   * constraint anyway - as an unhandled driver error, surfacing as a 500 on
+   * what is a legitimate request with a legitimate answer. This turns it
+   * into a 409 that says what is in the way.
+   *
+   * Cascading instead was the alternative, and it would erase the answer
+   * history of every student who ever sat the question. Retiring a question
+   * that has been answered is what softDelete (isActive = false) is for: it
+   * leaves the history intact and takes the question out of circulation.
+   */
   async remove(id: number): Promise<{ message: string }> {
     const question = await this.findOne(id);
+
+    const answers = await this.answerLogRepository.count({
+      where: { questionId: id },
+    });
+    if (answers > 0) {
+      throw new ConflictException(
+        `Cannot delete this question: ${answers} recorded answer${answers === 1 ? '' : 's'} reference${answers === 1 ? 's' : ''} it. Deactivate it instead.`,
+      );
+    }
 
     await this.questionRepository.remove(question);
 
@@ -260,15 +288,36 @@ export class QuestionsService {
     return { message: 'Question deactivated successfully' };
   }
 
+  /**
+   * A practice answer: one question, outside any attempt.
+   *
+   * `userId` is required because the answer is logged, and an answer with no
+   * one attached to it is of no use to the per-student analytics. This method
+   * previously took only the DTO - the controller now supplies the id from
+   * the token.
+   *
+   * The write is awaited rather than fired and forgotten: nothing else
+   * records a practice answer, so a dropped row here is gone for good, with
+   * no equivalent of exams.answers to rebuild it from.
+   */
   async answerQuestion(
     answerQuestionDto: AnswerQuestionDto,
+    userId: number,
   ): Promise<QuizResultDto> {
-    const { questionId, selectedAnswer } = answerQuestionDto;
+    const { questionId, selectedAnswer, timeTakenSec } = answerQuestionDto;
 
     const question = await this.findOne(questionId);
 
     const isCorrect = selectedAnswer === question.correctAnswer;
     const points = isCorrect ? question.points : 0;
+
+    await this.answerLogService.recordPracticeAnswer({
+      userId,
+      questionId,
+      selectedAnswer,
+      isCorrect,
+      timeTakenSec: timeTakenSec ?? null,
+    });
 
     return {
       questionId: question.id,

@@ -11,6 +11,7 @@ import { SubmitExamDto } from './dto/submit-exam.dto';
 import { ExamResponseDto, ExamResultDto } from './dto/exam-response.dto';
 import { QuestionsService } from '../questions/questions.service';
 import { Course } from '../course/entities/course.entity';
+import { ExamStage } from '../exam-stages/entities/exam-stage.entity';
 import { AnswerLogService } from '../answer-log/answer-log.service';
 
 @Injectable()
@@ -20,6 +21,8 @@ export class ExamService {
     private examRepository: Repository<Exam>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
+    @InjectRepository(ExamStage)
+    private examStageRepository: Repository<ExamStage>,
     private questionsService: QuestionsService,
     private answerLogService: AnswerLogService,
   ) {}
@@ -37,6 +40,20 @@ export class ExamService {
       throw new NotFoundException(
         `Course with ID ${createExamDto.courseId} not found`,
       );
+    }
+
+    // Validated rather than trusted: the column is RESTRICT, so a bad id
+    // would otherwise surface as a 500 from the FK instead of a 404.
+    // A soft-deleted stage is treated as absent, matching the course check.
+    if (createExamDto.examStageId !== undefined) {
+      const stageExists = await this.examStageRepository.exists({
+        where: { id: createExamDto.examStageId, deletedAt: IsNull() },
+      });
+      if (!stageExists) {
+        throw new NotFoundException(
+          `Exam stage with ID ${createExamDto.examStageId} not found`,
+        );
+      }
     }
 
     // Get random questions (max 30)
@@ -59,6 +76,9 @@ export class ExamService {
     const exam = this.examRepository.create({
       userId,
       courseId: createExamDto.courseId,
+      // Null when the caller named no stage, which is every attempt made
+      // before the field existed.
+      examStageId: createExamDto.examStageId ?? null,
       // Stored only when the caller actually named the attempt. A title that
       // trims to nothing is normalised to null so it takes the same fallback
       // path as an omitted one, rather than rendering as a blank label.

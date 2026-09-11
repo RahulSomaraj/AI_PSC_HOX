@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Course } from '../../course/entities/course.entity';
+import { ExamStage } from '../../exam-stages/entities/exam-stage.entity';
 
 @Entity({ name: 'exams' })
 export class Exam {
@@ -28,6 +29,31 @@ export class Exam {
   @ManyToOne(() => Course, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'courseId' })
   course: Course;
+
+  // Which catalogue sitting this attempt was made against, or null for a
+  // free-standing practice attempt.
+  //
+  // A stage rather than an exam post: the post is the exam as advertised
+  // ("Kerala PSC LDC"), the stage is the sitting anyone actually takes
+  // ("Prelims"), and it is the stage that carries a question count, marks
+  // and a duration. Results are comparable within a stage, not across a post.
+  //
+  // Nullable, and it has to stay that way. Every attempt made before this
+  // column existed is null and cannot be repaired: an attempt row records a
+  // course and a set of question IDs, and neither identifies a catalogue
+  // exam. Unlike the answer-log backfill there is no source to reconstruct
+  // from, so GET /exams/:id/results covers attempts created after this
+  // shipped and nothing earlier.
+  //
+  // RESTRICT, matching exam_stages -> exam_posts: a stage with attempts
+  // filed against it is one whose results someone can still read, so
+  // deleting it out from under them is refused rather than cascaded.
+  @Column({ name: 'exam_stage_id', type: 'int', nullable: true })
+  examStageId: number | null;
+
+  @ManyToOne(() => ExamStage, { onDelete: 'RESTRICT', nullable: true })
+  @JoinColumn({ name: 'exam_stage_id' })
+  examStage: ExamStage | null;
 
   // The name the attempt is shown under - "LDC Weekly Mock Test" in the Mock
   // Test Scores panel on the student profile. Without it a panel row can only

@@ -22,6 +22,19 @@ export class CreateExamDto {
 
   @ApiPropertyOptional({
     description:
+      'Catalogue stage this attempt is a sitting of, from GET /exam-stages. ' +
+      'Set it and the attempt shows up in GET /exams/:id/results for the ' +
+      'exam post it belongs to; omit it for a free-standing practice attempt, ' +
+      'which is what every attempt was before this field existed.',
+    example: 3,
+    type: Number,
+  })
+  @IsInt()
+  @IsOptional()
+  examStageId?: number;
+
+  @ApiPropertyOptional({
+    description:
       'Name this attempt is shown under, e.g. in the Mock Test Scores panel ' +
       'on the student profile. Omit it and responses fall back to the course ' +
       'name.',

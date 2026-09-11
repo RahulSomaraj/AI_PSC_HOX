@@ -4,12 +4,13 @@ import { ExamService } from './exam.service';
 import { ExamController } from './exam.controller';
 import { Exam } from './entities/exam.entity';
 import { Course } from '../course/entities/course.entity';
+import { ExamStage } from '../exam-stages/entities/exam-stage.entity';
 import { QuestionsModule } from '../questions/questions.module';
 import { AnswerLogModule } from '../answer-log/answer-log.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Exam, Course]),
+    TypeOrmModule.forFeature([Exam, Course, ExamStage]),
     QuestionsModule,
     // submit() records one answer row per question, in the same transaction
     // as the completed exam.

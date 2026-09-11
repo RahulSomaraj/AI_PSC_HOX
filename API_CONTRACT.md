@@ -334,3 +334,65 @@ Note this is the *recipient's* view. An admin calling it sees what was sent
 to everyone, **not** an audit of everything they have sent — a batch-targeted
 announcement is invisible to its author here. An admin listing endpoint is
 not part of this iteration.
+
+---
+
+## Reports
+
+Analytics over the answer log. Served under `/users` rather than `/reports`
+because the panel belongs to a student profile; `GET /dashboard/*` and these
+are the two read surfaces over that table.
+
+### `GET /users/:id/weak-subjects`
+
+Backs the Weak Subjects panel on the student profile.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `limit` | 1–50, default 5. How many subjects to return. |
+| `minAttempts` | 1–100, default 5. Noise floor — see below. |
+
+**Response `200`**
+
+```json
+[
+  {
+    "subjectId": 12,
+    "subjectName": "Indian Polity",
+    "attempted": 48,
+    "correct": 19,
+    "incorrect": 29,
+    "accuracy": 39.6
+  }
+]
+```
+
+Ordered by `accuracy` ascending, so the weakest subject is first. Ties break
+towards the subject with more answers behind it, then by `subjectId`, so the
+order is stable between calls. `accuracy` is `correct / attempted` as a
+percentage to one decimal place.
+
+**Counts practice and exam answers together.** A subject a student keeps
+getting wrong in practice is a weakness whether or not it was under exam
+conditions. Answers to untagged questions are skipped — they cannot be rolled
+up by subject.
+
+> **`minAttempts` is a noise floor, and the default of 5 is a guess.**
+> One wrong answer out of one is not a weakness, so subjects with fewer than
+> `minAttempts` answers are left out. The consequence is that a student who
+> has barely started gets an empty panel. Pass `minAttempts=1` to see every
+> subject they have touched. If the product owner wants a different floor,
+> it is a one-line default change.
+
+**No date window, deliberately.** `answer_log.answered_at` is the insert time
+for backfilled rows, not the original attempt — the historical answers on
+`exams.answers` carry no per-answer timestamp. A `?days=30` filter would
+therefore silently mean "everything the backfill inserted". A windowed
+version has to read `exams.completed_at` through `exam_id`, which will come
+with the Reports tabs.
+
+**`404`** for an unknown id, a soft-deleted account, or one whose role is not
+`user` — matching `GET /users/:id` and `GET /users/:id/exams`. A student with
+no answers yet is **`200` with `[]`**, not a 404.

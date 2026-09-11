@@ -30,6 +30,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AnswerLogModule } from './answer-log/answer-log.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
@@ -122,6 +123,9 @@ import { NotificationsModule } from './notifications/notifications.module';
 
     // Admin dashboard aggregates
     DashboardModule,
+
+    // Student analytics over the answer log
+    ReportsModule,
 
     // Admin settings lookups
     SettingsModule,

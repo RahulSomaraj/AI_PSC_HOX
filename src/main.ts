@@ -75,6 +75,7 @@ async function bootstrap() {
     .addTag('settings', 'Admin settings lookup endpoints')
     .addTag('notifications', 'Announcement endpoints')
     .addTag('dashboard', 'Admin dashboard aggregate endpoints')
+    .addTag('reports', 'Student analytics and reporting endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

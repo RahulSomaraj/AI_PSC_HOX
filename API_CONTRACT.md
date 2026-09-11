@@ -396,3 +396,135 @@ with the Reports tabs.
 **`404`** for an unknown id, a soft-deleted account, or one whose role is not
 `user` — matching `GET /users/:id` and `GET /users/:id/exams`. A student with
 no answers yet is **`200` with `[]`**, not a 404.
+
+---
+
+## Content Library
+
+Study material — notes, lecture video, documents — filed against the same
+`subject → topic → subtopic` taxonomy questions use, and optionally
+restricted to one or more batches.
+
+**An item points at exactly one thing:** either `fileUrl` (something uploaded
+through `POST /uploads`) or `sourceUrl` (a link to material hosted
+elsewhere). Sending both, or neither, is a `400`.
+
+**Batches are a restriction, not a requirement.** An item with no batches
+attached is visible to every student — the shared shelf. Attaching batches
+narrows it to those batches only.
+
+### `POST /content`
+
+**Roles:** `admin`, `staff`
+
+```json
+{
+  "title": "Indian Polity - Fundamental Rights notes",
+  "description": "Covers Articles 12 to 35, with PYQ tags.",
+  "type": "document",
+  "fileUrl": "https://psc-uploads.s3.ap-south-1.amazonaws.com/content/2026/09/3f1a....pdf",
+  "subjectId": 1,
+  "topicId": 5,
+  "batchIds": [1, 4],
+  "isPublished": false
+}
+```
+
+| Field | Notes |
+|---|---|
+| `type` | `note`, `video` or `document`. A label for filtering and icons — a `video` may be either an upload or a link. |
+| `fileUrl` / `sourceUrl` | Exactly one. |
+| `subjectId` | **Required.** |
+| `topicId` | Optional, must belong to `subjectId`. |
+| `subtopicId` | Optional, must belong to `topicId` — which then becomes required. |
+| `batchIds` | Optional. Omit or send `[]` for every student. |
+| `isPublished` | Defaults to `false`, i.e. draft. |
+
+Returns the created item in the `GET /content/:id` shape below.
+
+| Status | When |
+|---|---|
+| `400` | Both or neither source · a subtopic with no topic · a topic not under the subject |
+| `404` | Subject, topic, subtopic or batch not found |
+
+### `GET /content`
+
+**Roles:** any authenticated user — but **what comes back depends on who asks.**
+
+| Caller | Sees |
+|---|---|
+| `admin`, `staff` | Everything, drafts included |
+| a student | Published items only, and among those only ones with **no batches attached** or attached to **their own** batch |
+
+**Query:** `page` (default 1), `limit` (default 10, max 100), `search`
+(title and description), `type`, `subjectId`, `topicId`, `subtopicId`,
+`batchId`, `isPublished`.
+
+`batchId` and `isPublished` are staff filters. A student sending them is not
+an error — they are ignored, because a student's visibility is fixed by who
+they are.
+
+**Response `200`**
+
+```json
+{
+  "items": [
+    {
+      "id": 12,
+      "title": "Indian Polity - Fundamental Rights notes",
+      "description": "Covers Articles 12 to 35, with PYQ tags.",
+      "type": "document",
+      "fileUrl": "https://psc-uploads.s3.../content/2026/09/3f1a....pdf",
+      "sourceUrl": null,
+      "subject": { "id": 1, "name": "Indian Polity" },
+      "topic": { "id": 5, "name": "Fundamental Rights" },
+      "subtopic": null,
+      "batches": [
+        { "id": 1, "name": "Alpha Batch 2026" },
+        { "id": 4, "name": "Evening LDC 2026" }
+      ],
+      "isPublished": true,
+      "createdBy": 7,
+      "createdAt": "2026-09-11T10:35:00.000Z",
+      "updatedAt": "2026-09-11T10:35:00.000Z"
+    }
+  ],
+  "total": 40,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 4
+}
+```
+
+`batches` is always the item's **full** batch list, name-sorted — filtering
+by `batchId` does not trim it. `[]` means visible to everyone.
+
+### `GET /content/:id`
+
+Same shape as one `items` entry. Same visibility rule.
+
+A student requesting a draft, or another batch's material, gets `404` rather
+than `403` — being refused would itself confirm the item exists.
+
+### `PATCH /content/:id`
+
+**Roles:** `admin`, `staff`. Any subset of the `POST` fields.
+
+- **`batchIds` replaces the whole set.** Omit it to leave attachments alone;
+  send `[]` to detach everything and make the item visible to all students.
+- Publish by sending `{ "isPublished": true }`.
+- Taxonomy is validated **after** the merge, not on the body alone. A PATCH
+  sending only `subjectId` is rejected if the topic already stored does not
+  belong to the new subject — nothing in the body is wrong on its own, but
+  the resulting row would be.
+- `forbidNonWhitelisted` applies: never PATCH back an object you got from a
+  GET. The response carries `subject`, `createdBy` and friends, none of which
+  the DTO declares.
+
+### `DELETE /content/:id`
+
+**Roles:** `admin`, `staff`. Soft delete; `deleted_by` records who.
+
+```json
+{ "message": "Content deleted successfully" }
+```

@@ -33,6 +33,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [
@@ -132,6 +133,9 @@ import { NotificationsModule } from './notifications/notifications.module';
 
     // Admin announcements, and the student's view of them
     NotificationsModule,
+
+    // The study library, filed against the academic taxonomy
+    ContentModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

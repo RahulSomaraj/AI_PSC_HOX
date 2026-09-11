@@ -16,6 +16,9 @@ import { StudentPerformanceDto } from './dto/student-performance.dto';
 import { ExamAnalyticsService } from './exam-analytics.service';
 import { ExamAnalyticsQueryDto } from './dto/exam-analytics-query.dto';
 import { ExamAnalyticsDto } from './dto/exam-analytics.dto';
+import { GrowthEngagementService } from './growth-engagement.service';
+import { GrowthEngagementDto } from './dto/growth-engagement.dto';
+import { GrowthQueryDto } from './dto/growth-query.dto';
 
 /**
  * The Reports screen: one endpoint per tab.
@@ -36,6 +39,7 @@ export class ReportsController {
   constructor(
     private readonly studentPerformanceService: StudentPerformanceService,
     private readonly examAnalyticsService: ExamAnalyticsService,
+    private readonly growthEngagementService: GrowthEngagementService,
   ) {}
 
   @Get('student-performance')
@@ -66,5 +70,21 @@ export class ReportsController {
     @Query() query: ExamAnalyticsQueryDto,
   ): Promise<ExamAnalyticsDto> {
     return this.examAnalyticsService.report(query);
+  }
+
+  @Get('growth-engagement')
+  @ApiOperation({
+    summary: 'Growth & Engagement tab (Admin only)',
+    description:
+      'Signups, active students, new subscriptions and exam attempts per ' +
+      'day, gap-filled and oldest first, with totals and a returning rate ' +
+      'across the window. Active-user figures only cover the period since ' +
+      'presence tracking shipped.',
+  })
+  @ApiResponse({ status: 200, type: GrowthEngagementDto })
+  growthEngagement(
+    @Query() query: GrowthQueryDto,
+  ): Promise<GrowthEngagementDto> {
+    return this.growthEngagementService.report(query.days ?? 30);
   }
 }

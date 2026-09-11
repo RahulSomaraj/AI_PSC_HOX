@@ -1,7 +1,6 @@
 import {
   Column,
   CreateDateColumn,
-<<<<<<< HEAD
   DeleteDateColumn,
   Entity,
   Index,
@@ -28,35 +27,12 @@ import { BatchStatus } from '../../common/enums/batch-status.enum';
 @Index('UQ_batches_name_active', ['name'], {
   unique: true,
   where: '"deleted_at" IS NULL',
-=======
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-
-export enum BatchShift {
-  Morning = 'Morning',
-  Evening = 'Evening',
-}
-
-// A batch is a named group of students sitting a shift, shown as
-// "Batch A (Morning)" on the students screen.
-//
-// Partial unique index on (name, shift): the same name may run in both
-// shifts, but not twice in one. Scoped to live rows, so a soft-deleted
-// batch frees its name for reuse.
-@Index('UQ_batches_name_shift_active', ['name', 'shift'], {
-  unique: true,
-  where: '"deletedAt" IS NULL',
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
 })
 @Entity({ name: 'batches' })
 export class Batch {
   @PrimaryGeneratedColumn()
   id: number;
 
-<<<<<<< HEAD
   @Column({ type: 'varchar', length: 200 })
   name: string;
 
@@ -106,32 +82,5 @@ export class Batch {
   updatedBy: number | null;
 
   @Column({ name: 'deleted_by', type: 'int', nullable: true })
-=======
-  @Column({ length: 100 })
-  name: string;
-
-  @Column({ type: 'varchar', length: 20 })
-  shift: BatchShift;
-
-  @Column({ type: 'boolean', default: true })
-  isActive: boolean;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
-
-  @Column({ type: 'timestamptz', nullable: true })
-  deletedAt: Date | null;
-
-  @Column({ type: 'int', nullable: true })
-  createdBy: number | null;
-
-  @Column({ type: 'int', nullable: true })
-  updatedBy: number | null;
-
-  @Column({ type: 'int', nullable: true })
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   deletedBy: number | null;
 }

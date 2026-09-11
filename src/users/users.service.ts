@@ -10,14 +10,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { DataSource, In, Not, Repository, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
-<<<<<<< HEAD
-import { UserSession } from '../auth/entities/user-session.entity';
-=======
 import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
 import { Exam } from '../exam/entities/exam.entity';
 import { UserExamDto } from './dto/user-exam.dto';
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
+import { UserSession } from '../auth/entities/user-session.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { Role } from '../common/enums/role.enum';
@@ -33,12 +30,9 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepositories: Repository<User>,
-<<<<<<< HEAD
     @InjectRepository(UserSession)
     private readonly sessionRepository: Repository<UserSession>,
-=======
     private readonly dataSource: DataSource,
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   ) {}
 
   /**
@@ -310,7 +304,6 @@ export class UsersService {
     return await this.userRepositories.save(user);
   }
 
-<<<<<<< HEAD
   /**
    * Activate or deactivate an account - the Deactivate control on the admin
    * user detail page.
@@ -320,16 +313,12 @@ export class UsersService {
    * as well, otherwise the account could keep rotating fresh tokens through
    * POST /auth/refresh, which does not look at isActive.
    */
-  async setStatus(id: number, isActive: boolean, actorId?: number) {
-=======
-  async updateStatus(id: number, isActive: boolean) {
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
+  async updateStatus(id: number, isActive: boolean, actorId?: number) {
     const user = await this.userRepositories.findOne({
       where: { id, deletedAt: IsNull() },
     });
     if (!user) throw new NotFoundException('User not found');
 
-<<<<<<< HEAD
     // An admin deactivating their own account would be locked out on their
     // very next request, with no way back in.
     if (!isActive && actorId !== undefined && id === actorId) {
@@ -348,10 +337,6 @@ export class UsersService {
     }
 
     return saved;
-=======
-    user.isActive = isActive;
-    return await this.userRepositories.save(user);
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   }
 
   async updateRole(id: number, role: Role) {

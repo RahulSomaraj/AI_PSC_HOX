@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  ParseIntPipe,
   Delete,
   Query,
   UseGuards,
@@ -30,16 +29,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { HttpExceptionFilter } from '../shared/exception-service';
 import { Public } from '../common/decorators/public.decorator';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
-<<<<<<< HEAD
-import { UpdateStatusDto } from '../common/dto/update-status.dto';
-=======
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import {
   FindUsersQueryDto,
   SortOrder,
   UserSortBy,
 } from './dto/find-users-query.dto';
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
 import { GetUser } from '../common/decorators/get-user.decorator';
 import { UserExamDto } from './dto/user-exam.dto';
 
@@ -204,15 +199,9 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-<<<<<<< HEAD
-    summary: 'Get user by ID (Admin only)',
-    description:
-      'Retrieve one user - name, email, phone, photo, role and active flag. Backs the admin user detail page.',
-=======
     summary: 'Get student by ID (Admin only)',
     description:
       'Retrieve a student by ID. Only accounts with the "user" role are returned - an admin ID reports 404.',
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   })
   @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
   @ApiResponse({
@@ -233,14 +222,6 @@ export class UsersController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
-<<<<<<< HEAD
-    status: 403,
-    description: 'Forbidden - Admin access required',
-  })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.findOne(id);
-=======
     status: 404,
     description: 'Student not found, or the ID belongs to an admin',
   })
@@ -277,7 +258,6 @@ export class UsersController {
   })
   findExams(@Param('id') id: number) {
     return this.usersService.findExamsForUser(+id);
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   }
 
   @Get()
@@ -287,12 +267,8 @@ export class UsersController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get all users (Admin only)',
-<<<<<<< HEAD
-    description: 'Retrieve every user that has not been deleted.',
-=======
     description:
       'Retrieve a paginated list of users. Filter with role=user for the students list.',
->>>>>>> c934900d1070174de7aa27569b9d7632cebf13c1
   })
   @ApiQuery({
     name: 'page',
@@ -403,40 +379,6 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
-  @Patch(':id/status')
-  @Roles(Role.Admin)
-  @ApiTags('admin', 'users')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({
-    summary: 'Activate or deactivate a user (Admin only)',
-    description:
-      'Sets the active flag without touching any other field - the Deactivate control on the user detail page. Deactivating also revokes the live sessions, and the account is refused on its very next request.',
-  })
-  @ApiParam({ name: 'id', type: 'number', description: 'User ID', example: 1 })
-  @ApiBody({
-    type: UpdateStatusDto,
-    examples: {
-      deactivate: { summary: 'Deactivate', value: { isActive: false } },
-      activate: { summary: 'Reactivate', value: { isActive: true } },
-    },
-  })
-  @ApiResponse({ status: 200, description: 'User status updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({
-    status: 403,
-    description:
-      'Forbidden - Admin access required, or an admin tried to deactivate their own account',
-  })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  setStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateStatusDto: UpdateStatusDto,
-    @GetUser('id') actorId: number,
-  ) {
-    return this.usersService.setStatus(id, updateStatusDto.isActive, actorId);
-  }
-
   @Patch(':id')
   @Roles(Role.Admin)
   @ApiTags('admin', 'users')
@@ -541,8 +483,13 @@ remove(@Param('id') id: number, @GetUser('id') adminId: number) {
   updateStatus(
     @Param('id') id: number,
     @Body() updateUserStatusDto: UpdateUserStatusDto,
+    @GetUser('id') actorId: number,
   ) {
-    return this.usersService.updateStatus(+id, updateUserStatusDto.isActive);
+    return this.usersService.updateStatus(
+      +id,
+      updateUserStatusDto.isActive,
+      actorId,
+    );
   }
 
   @Patch(':id/role')

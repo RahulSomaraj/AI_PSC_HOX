@@ -1,9 +1,83 @@
-# PROBLEMS — unresolved merge on `develop`
+# PROBLEMS — the merge on `develop`
 
-**Status:** 🔴 `develop` does not compile.
-**Branch:** `develop` @ `8bb8618`
+**Status:** 🟢 **RESOLVED — `develop` compiles.** `npx nest build` exits 0.
+**Branch:** `develop`
 **Root cause:** commit `c6e18c0 "merge"`
-**Investigated:** 2026-09-11
+**Investigated:** 2026-09-11 · **Resolved:** 2026-09-11
+
+---
+
+## Resolution summary
+
+All 197 conflict hunks across 47 files are resolved and the backend builds.
+
+Resolved **forward** on top of `develop` rather than by reset-and-replay as
+originally proposed below: `develop` was already pushed and shared, so
+rewriting history would have required a force push. The broken commit stays
+in the log as a record; the fix moves forward from it. The pre-fix state is
+preserved on branch **`backup/broken-merge-c6e18c0`**.
+
+| # | Problem | Outcome |
+|---|---|---|
+| P1 | 47 files / 197 hunks | ✅ **Fixed** — 0 markers, `nest build` exits 0 |
+| P2 | Duplicate syllabus modules | ✅ **Fixed** — kept `src/syllabus/`, deleted `exam-syllabi/` + `exam-syllabus-items/` |
+| P3 | `app.module.ts` markers + duplicates | ✅ **Fixed** — hand-written, each module registered once |
+| P4 | Two `Batch` entities | ✅ **Fixed** — resolved to 🅰️ as forced by `faculty.service` |
+| P5 | `/exams` vs `/exam-posts` | ✅ **Decided** — `/exams` (🅰️). ⚠️ see follow-up below |
+| P6 | `examId` vs `examPostId` | ✅ **Decided** — `examId` (🅰️), consistent with `/exams` and `src/syllabus/` |
+| P7 | snake_case vs camelCase columns | ✅ **Decided** — snake_case (🅰️). ⚠️ see follow-up below |
+| P8 | `users.service` — both sides had keepers | ✅ **Hand-merged** — 🅱️'s pagination/count/exams **plus** 🅰️'s self-lockout guard and session revocation |
+| P9 | `numeric` → string vs number | ✅ **Fixed** — `DecimalTransformer` retained; marks now serialise as numbers |
+| P10 | `Role.Staff` gates nothing | ⬜ **Open** — unchanged, needs a product decision |
+| P11 | Two pagination shapes | ⬜ **Open** — `data` vs `items` still differ |
+| P12 | No migrations | ⬜ **Open** — `synchronize: true` still on |
+
+### Verification
+
+```
+grep -rc "^<<<<<<< " src           → no matches
+npx nest build                     → exit 0
+tsc --noEmit, production code      → 0 errors
+tsc --noEmit, *.spec.ts            → 19 errors (pre-existing stale tests,
+                                      identical set to before the fix;
+                                      excluded by tsconfig.build.json)
+@InjectRepository ↔ forFeature     → all registrations match
+node dist/main.js                  → DI graph resolves; stops only at
+                                      Postgres auth (28P01), a .env matter
+```
+
+Resolved surface: **19 controllers, 147 routes** — one implementation, no variants.
+
+Regression check — all five items in [§2](#2-verified-not-broken) re-verified after the fix:
+security guards on `/course` and `/categories`, question taxonomy tagging,
+`targetExamId`, `/users/count`, `/users/:id/exams`, and the faculty module are
+all intact.
+
+### Kept from 🅱️ that a naive "take A" would have dropped
+
+`6c8343c` predates question tagging, so its taxonomy services have no
+question guard. Taking 🅰️ wholesale would have allowed a subject, topic, or
+subtopic to be soft-deleted out from under questions still tagged to it.
+`c934900`'s guard was re-applied to all three services, with the `Question`
+repository registered in all three modules.
+
+### Follow-ups this resolution leaves open
+
+1. **`/exam` and `/exams` now coexist** — the student attempt session and the
+   exam catalogue, one character apart. Rename the attempt controller to
+   `/attempts` in its own commit (P5).
+2. **Column naming changed to snake_case** — if a database already holds data
+   in camelCase columns, **do not boot with `synchronize: true`**. Write the
+   rename migration first (P7, P12).
+3. **P10, P11, P12 remain open** by design — each needs a decision rather
+   than a merge resolution.
+
+---
+
+## Original diagnosis
+
+*Everything below is the investigation as written before the fix, kept as the
+record of what was wrong and why each decision was made.*
 
 ---
 

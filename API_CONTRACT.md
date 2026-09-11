@@ -480,6 +480,183 @@ Completed attempts only — a pending or expired one has no score to rank.
 > attempt actually follow the stage's rules is a separate decision, not part
 > of this link.
 
+### The Reports screen — four tabs
+
+`GET /reports/*`, one endpoint per tab on the Reports screen. All `admin`.
+
+| Tab | Endpoint |
+|---|---|
+| Student Performance | `GET /reports/student-performance` |
+| Exam Analytics | `GET /reports/exam-analytics` |
+| Content Usage | ⛔ **not built** — see the end of this section |
+| Growth & Engagement | `GET /reports/growth-engagement` |
+
+### `GET /reports/student-performance`
+
+One row per student. **Every** student with the `user` role appears, including
+one who has answered nothing — the tab is a roster, not a leaderboard of the
+active, and an empty row is itself the signal.
+
+| Query | Notes |
+|---|---|
+| `batchId` | Only students assigned to this batch. |
+| `search` | Case-insensitive, over first name, last name and email. |
+| `sortBy` | `accuracy` (default), `averageScore`, `examsTaken`, `name`. |
+| `sortOrder` | `ASC` / `DESC`, default `DESC`. |
+| `page` / `limit` | 1-based, default 1; 1–100, default 25. |
+
+**Response `200`**
+
+```json
+{
+  "items": [
+    {
+      "userId": 42,
+      "studentName": "Anjali Menon",
+      "email": "anjali@example.com",
+      "batchId": 3,
+      "batchName": "LDC Evening 2026",
+      "examsTaken": 12,
+      "averageScore": 58.4,
+      "attempted": 430,
+      "correct": 268,
+      "accuracy": 62.3,
+      "lastActiveOn": "2026-09-10"
+    }
+  ],
+  "total": 1240, "page": 1, "limit": 25, "totalPages": 50
+}
+```
+
+`averageScore` is the mean of `score/totalPossibleScore` over completed
+attempts; `accuracy` is `correct/attempted` over every answer, practice and
+exam alike. Both are percentages to one decimal.
+
+**A student with nothing to measure reports `null`, not `0`** — no answers
+means no accuracy, which is a different statement from an accuracy of zero.
+Those students sort last whichever direction you ask for.
+
+`batchName` comes from the student's aspirant profile, and is `null` for
+anyone without a profile or without a batch assignment. `lastActiveOn` only
+covers the period since presence tracking shipped.
+
+### `GET /reports/exam-analytics`
+
+Attempt volume and scoring, **grouped by course**, with a summary across
+everything in scope.
+
+| Query | Notes |
+|---|---|
+| `courseId` | Narrow to one course. |
+| `page` / `limit` | 1-based, default 1; 1–100, default 25. |
+
+**Response `200`**
+
+```json
+{
+  "summary": {
+    "totalAttempts": 1820,
+    "completed": 1544,
+    "abandoned": 276,
+    "completionRate": 84.8,
+    "averageScore": 57.2,
+    "distinctStudents": 612
+  },
+  "items": [
+    {
+      "courseId": 4,
+      "courseName": "Kerala PSC LDC",
+      "attempts": 240,
+      "completed": 198,
+      "distinctStudents": 132,
+      "averageScore": 57.2,
+      "highestScore": 94.0,
+      "lowestScore": 12.5,
+      "accuracy": 61.4,
+      "lastAttemptAt": "2026-09-10T11:42:00.000Z"
+    }
+  ],
+  "total": 18, "page": 1, "limit": 25, "totalPages": 1
+}
+```
+
+`abandoned` is everything not completed — pending, in progress and expired.
+Score figures cover completed attempts only.
+
+> **Grouped by course, not by catalogue exam.** An attempt is drawn from a
+> course, and `exam_stage_id` — the link to the catalogue — is null on
+> everything taken before that column existed. Grouping this tab by stage
+> would report on a sliver of the data and silently omit the rest.
+> `GET /exams/:id/results` is the stage-scoped view, and it says so.
+
+### `GET /reports/growth-engagement`
+
+| Query | Notes |
+|---|---|
+| `days` | 1–365, default 30. |
+
+**Response `200`**
+
+```json
+{
+  "summary": {
+    "signups": 96,
+    "newSubscriptions": 41,
+    "examAttempts": 402,
+    "activeUsers": 512,
+    "averageDailyActive": 148.3,
+    "returningRate": 34.2
+  },
+  "series": [
+    {
+      "date": "2026-09-11",
+      "signups": 14,
+      "activeUsers": 148,
+      "newSubscriptions": 6,
+      "examAttempts": 63
+    }
+  ]
+}
+```
+
+`series` is oldest first and gap-filled, and buckets the day by
+`ACTIVITY_TIMEZONE` — the same boundary as `/dashboard/dau`, so the charts
+line up.
+
+`summary.activeUsers` is **distinct over the whole window**, not the sum of
+the daily counts: a student seen on five days is one active user, not five.
+`averageDailyActive` divides by every day in the window, including silent
+ones.
+
+`returningRate` is the share of students who **existed before the window** and
+were seen during it. Anyone who signed up inside the window is excluded from
+both halves — counting a new student as "returning" would make the number
+climb with growth rather than with retention. `null` when nobody predates the
+window.
+
+> **`activeUsers` cannot reach back before presence tracking shipped.** Days
+> earlier than that report zero because nothing was recorded, not because
+> nobody came. Read a long window with that in mind.
+
+### ⛔ Content Usage — not built
+
+**Nothing records who opens a piece of content.** `content` has no view or
+download counter and there is no event table anywhere, so there is nothing to
+aggregate. This is the same shape of gap the answer log filled for questions.
+
+Making it work needs, in order:
+
+1. A `content_view` table — one row per open, carrying `content_id`,
+   `user_id` and a timestamp, the way `answer_log` carries one row per answer.
+2. A write on the content read path, in the module that owns it.
+3. Then the tab itself: views per item, per subject, per batch, over time.
+
+**There is nothing to backfill from.** Unlike exam answers, which could be
+reconstructed from `exams.answers`, a content view leaves no trace anywhere —
+every day without the write path is a day of usage data that cannot be
+recovered. Content shipped recently, so almost nothing has been lost yet, but
+that stops being true quickly.
+
 ---
 
 ## Content Library

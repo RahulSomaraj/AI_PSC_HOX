@@ -24,7 +24,9 @@ import { ExamLevelsModule } from './exam-levels/exam-levels.module';
 import { ExamPostsModule } from './exam-posts/exam-posts.module';
 import { ExamStagesModule } from './exam-stages/exam-stages.module';
 import { SyllabusModule } from './syllabus/syllabus.module';
-import { APP_GUARD } from '@nestjs/core';
+import { ActivityModule } from './activity/activity.module';
+import { ActivityInterceptor } from './activity/activity.interceptor';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -103,6 +105,9 @@ import { APP_GUARD } from '@nestjs/core';
     QuestionsModule,
     EnrollmentsModule,
     ExamModule,
+
+    // Presence tracking, read by the dashboard's DAU chart
+    ActivityModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that
@@ -111,6 +116,11 @@ import { APP_GUARD } from '@nestjs/core';
     AppService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Registered here rather than in main.ts: the interceptors there are
+    // behind an `if (NODE_ENV !== 'production')`, and activity must be
+    // recorded in production above all. Runs after the guards, so
+    // request.user is populated.
+    { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
 })
 export class AppModule {}

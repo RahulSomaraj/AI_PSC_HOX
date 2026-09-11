@@ -397,6 +397,89 @@ with the Reports tabs.
 `user` — matching `GET /users/:id` and `GET /users/:id/exams`. A student with
 no answers yet is **`200` with `[]`**, not a 404.
 
+### `GET /exams/:id/results`
+
+Results for a catalogue exam. `:id` is an **exam post**, consistently with the
+rest of `/exams`.
+
+> Not to be confused with `/exam/:id` (singular), which is a student's own
+> attempt session. Decision **D3** proposes renaming that one to `/attempts`.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `stageId` | Narrow to one stage of the post. |
+| `page` | 1-based, default 1. |
+| `limit` | 1–100, default 25. |
+
+**Response `200`**
+
+```json
+{
+  "items": [
+    {
+      "rank": 1,
+      "attemptId": 913,
+      "userId": 42,
+      "studentName": "Anjali Menon",
+      "email": "anjali@example.com",
+      "stageId": 3,
+      "stageName": "Prelims",
+      "score": 184,
+      "totalPossibleScore": 300,
+      "percentage": 61.3,
+      "attempted": 30,
+      "correct": 19,
+      "incorrect": 11,
+      "completedAt": "2026-09-10T11:42:00.000Z"
+    }
+  ],
+  "total": 128,
+  "page": 1,
+  "limit": 25,
+  "totalPages": 6
+}
+```
+
+Ordered by `percentage` descending. Equal percentages share a rank and the
+next one skips (1, 2, 2, 4), and `rank` is the position in the whole roster,
+not within the page. An attempt with no `totalPossibleScore` to divide by
+reports `percentage: null` and sorts last rather than first. `correct` and
+`incorrect` are counted from the answer log; an attempt older than that table
+reports `attempted: 0` but keeps its score.
+
+Completed attempts only — a pending or expired one has no score to rank.
+
+**`404`** for an unknown or soft-deleted exam post. An exam nobody has sat is
+**`200`** with an empty `items`.
+
+> ### ⚠️ This endpoint requires a change on your side
+>
+> **An attempt only appears here if it was started with an `examStageId`.**
+>
+> `POST /exam` now accepts an optional `examStageId` (from `GET /exam-stages`)
+> naming the catalogue sitting the attempt is made against. Send it whenever a
+> student is sitting a real exam rather than free practice. Omit it and the
+> attempt is a practice run and never appears in any results roster.
+>
+> **Attempts taken before this shipped carry no stage and cannot be given
+> one.** An attempt row records a course and a list of question IDs, and
+> neither identifies a catalogue exam — unlike the answer-log backfill, there
+> is no source to reconstruct from. This roster therefore starts empty on an
+> existing database and fills only as new attempts are taken.
+>
+> **Scores are comparable within a stage, not across a post.** A stage is the
+> thing that carries a question count, marks and a duration. Omitting
+> `stageId` returns every stage in one list, and ranking that mixed list means
+> little — prefer one request per stage.
+>
+> **The attempt still uses its own rules, not the stage's.** `POST /exam`
+> continues to draw up to 30 random questions from the course and ignores the
+> stage's `totalQuestions`, `totalMarks` and `negativeMark`. Making a stage
+> attempt actually follow the stage's rules is a separate decision, not part
+> of this link.
+
 ---
 
 ## Content Library

@@ -70,6 +70,7 @@ async function bootstrap() {
     .addTag('subtopics', 'Subtopic management endpoints')
     .addTag('batches', 'Batch management endpoints')
     .addTag('admin', 'Admin-only endpoints')
+    .addTag('faculty', 'Faculty and staff management endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

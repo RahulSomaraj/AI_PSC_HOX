@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudentAnalyticsService } from './student-analytics.service';
 import { ExamResultsService } from './exam-results.service';
+import { StudentPerformanceService } from './student-performance.service';
 import { StudentAnalyticsController } from './student-analytics.controller';
 import { ExamResultsController } from './exam-results.controller';
+import { ReportsController } from './reports.controller';
 import { AnswerLog } from '../answer-log/entities/answer-log.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { User } from '../users/entities/user.entity';
@@ -25,7 +27,15 @@ import { ExamPost } from '../exam-posts/entities/exam-post.entity';
   imports: [
     TypeOrmModule.forFeature([AnswerLog, Subject, User, Exam, ExamPost]),
   ],
-  controllers: [StudentAnalyticsController, ExamResultsController],
-  providers: [StudentAnalyticsService, ExamResultsService],
+  controllers: [
+    StudentAnalyticsController,
+    ExamResultsController,
+    ReportsController,
+  ],
+  providers: [
+    StudentAnalyticsService,
+    ExamResultsService,
+    StudentPerformanceService,
+  ],
 })
 export class ReportsModule {}

@@ -29,6 +29,7 @@ import { ActivityInterceptor } from './activity/activity.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AnswerLogModule } from './answer-log/answer-log.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -116,6 +117,9 @@ import { UploadsModule } from './uploads/uploads.module';
 
     // Presigned upload URLs, so file bytes never reach this process
     UploadsModule,
+
+    // Admin dashboard aggregates
+    DashboardModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

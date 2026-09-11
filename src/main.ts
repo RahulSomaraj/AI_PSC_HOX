@@ -72,6 +72,7 @@ async function bootstrap() {
     .addTag('admin', 'Admin-only endpoints')
     .addTag('faculty', 'Faculty and staff management endpoints')
     .addTag('uploads', 'Presigned file upload endpoints')
+    .addTag('dashboard', 'Admin dashboard aggregate endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

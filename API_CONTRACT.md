@@ -211,3 +211,36 @@ boundary and can be overlaid.
 `GET /dashboard/upcoming-exams` — nothing in the catalogue carries a date, so
 there is no schedule to read. Blocked on decision **D1** in `CLAUDE.md` §5.
 The "Today's Exams" tile has no source until that is settled.
+
+---
+
+## Settings
+
+### `GET /settings/roles`
+
+The faculty roles an admin can assign. These are **job titles on a faculty
+record**, not account permissions — permissions are the `user` / `admin` /
+`staff` role carried on the JWT.
+
+**Roles:** `admin`
+
+**Response `200`**
+
+```json
+[
+  { "value": "teacher", "label": "Teacher" },
+  { "value": "reviewer", "label": "Reviewer" },
+  { "value": "content_creator", "label": "Content Creator" }
+]
+```
+
+Send `value` when writing a faculty record (`POST /faculty`, `PATCH
+/faculty/:id`) or filtering one (`GET /faculty?role=`); show `label`.
+
+Identical to the `roles` key of `GET /faculty/options`, and served from the
+same constant — the two cannot drift. Use `/faculty/options` when you are
+rendering the faculty form and need subjects and batches anyway; use this
+when roles are all you need.
+
+The list is a compile-time enum, not table rows: it changes only with a
+deploy, so it is safe to fetch once and cache for the session.

@@ -30,6 +30,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AnswerLogModule } from './answer-log/answer-log.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -120,6 +121,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 
     // Admin dashboard aggregates
     DashboardModule,
+
+    // Admin settings lookups
+    SettingsModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

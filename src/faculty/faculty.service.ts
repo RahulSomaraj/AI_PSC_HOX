@@ -13,7 +13,7 @@ import { Batch } from '../batches/entities/batch.entity';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { Role } from '../common/enums/role.enum';
-import { FacultyRole } from './faculty-role.enum';
+import { FACULTY_ROLE_OPTIONS } from './faculty-role.enum';
 import { CreateFacultyDto } from './dto/create-faculty.dto';
 import { UpdateFacultyDto } from './dto/update-faculty.dto';
 import { FindFacultyQueryDto } from './dto/find-faculty-query.dto';
@@ -123,11 +123,7 @@ export class FacultyService {
     return {
       subjects,
       batches,
-      roles: [
-        { value: FacultyRole.Teacher, label: 'Teacher' },
-        { value: FacultyRole.Reviewer, label: 'Reviewer' },
-        { value: FacultyRole.ContentCreator, label: 'Content Creator' },
-      ],
+      roles: FACULTY_ROLE_OPTIONS,
       statuses: [
         { value: true, label: 'Active' },
         { value: false, label: 'Inactive' },

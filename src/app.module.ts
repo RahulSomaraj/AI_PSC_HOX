@@ -28,6 +28,7 @@ import { ActivityModule } from './activity/activity.module';
 import { ActivityInterceptor } from './activity/activity.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AnswerLogModule } from './answer-log/answer-log.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -112,6 +113,9 @@ import { AnswerLogModule } from './answer-log/answer-log.module';
 
     // One row per question answered, read by Reports and the results page
     AnswerLogModule,
+
+    // Presigned upload URLs, so file bytes never reach this process
+    UploadsModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

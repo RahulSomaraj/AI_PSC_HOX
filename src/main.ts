@@ -71,6 +71,7 @@ async function bootstrap() {
     .addTag('batches', 'Batch management endpoints')
     .addTag('admin', 'Admin-only endpoints')
     .addTag('faculty', 'Faculty and staff management endpoints')
+    .addTag('uploads', 'Presigned file upload endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

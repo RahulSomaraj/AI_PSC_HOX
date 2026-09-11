@@ -89,3 +89,125 @@ not when the form opens.
 | `413` | `contentLength` is over the limit for the purpose |
 | `415` | `contentType` is not accepted for the purpose |
 | `503` | Storage is not configured on this server (`S3_BUCKET` unset) |
+
+---
+
+## Dashboard
+
+Admin home screen. All four need `admin`.
+
+`GET /dashboard` is a separate, older endpoint that returns the
+`GET /enrollments/stats` payload. It lives on `AppController` and is
+unchanged — the routes below are additions beside it, not replacements.
+
+### `GET /dashboard/summary`
+
+The KPI tiles across the top, in one round trip.
+
+**Roles:** `admin`
+
+**Response `200`**
+
+```json
+{
+  "totalStudents": 1240,
+  "activeBatches": 18,
+  "activeSubscriptions": 842
+}
+```
+
+| Field | Notes |
+|---|---|
+| `totalStudents` | Non-deleted accounts with `role=user`. Same figure as `GET /users/count?role=user`. |
+| `activeBatches` | Batches whose `status` is `active` **or** `ongoing` — see the caveat below. |
+| `activeSubscriptions` | Not expired, not cancelled, held by a live user. Same figure as `GET /subscriptions/stats/active-count`. |
+
+> **Caveat on `activeBatches`.** `batches.status` carries two unrelated ideas
+> in one column: `active`/`inactive` are admin intent, `upcoming`/`ongoing`
+> are lifecycle. A batch running right now may legitimately hold either
+> `active` or `ongoing`, so both are counted. If the product owner means
+> admin intent only, this becomes `status = 'active'` and the number drops.
+
+### `GET /dashboard/recent-questions`
+
+The newest questions, for the "recently added" list.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `limit` | 1–50, default 5. |
+
+**Response `200`**
+
+```json
+[
+  {
+    "id": 4821,
+    "question": "Which article of the Constitution deals with the right to equality?",
+    "difficulty": 3,
+    "subject": { "id": 12, "name": "Indian Polity" },
+    "createdAt": "2026-09-11T06:12:44.000Z"
+  }
+]
+```
+
+Newest first. `subject` is `null` when the question is untagged. Retired
+questions (`isActive: false`) are excluded. `question` is the full text,
+untruncated — the client decides how much to show.
+
+### `GET /dashboard/exam-attempts`
+
+Attempts per day, for the activity chart.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `days` | 1–90, default 7. |
+
+**Response `200`**
+
+```json
+[
+  { "date": "2026-09-09", "count": 7 },
+  { "date": "2026-09-10", "count": 0 },
+  { "date": "2026-09-11", "count": 63 }
+]
+```
+
+Counts attempt rows by `createdAt`, whatever their status — an attempt left
+`pending` and never started still counts.
+
+### `GET /dashboard/dau`
+
+Daily active students, for the engagement chart.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `days` | 1–90, default 7. |
+
+**Response `200`** — same shape as `exam-attempts`:
+
+```json
+[
+  { "date": "2026-09-10", "count": 0 },
+  { "date": "2026-09-11", "count": 148 }
+]
+```
+
+Distinct students seen on each day, counted from presence tracking.
+
+**Both series are oldest first and gap-filled.** A day with no activity comes
+back as `count: 0` rather than being absent, so the chart draws a continuous
+line instead of joining across a missing point. Both bucket the day by
+`ACTIVITY_TIMEZONE` (default `Asia/Kolkata`), so the two charts share a day
+boundary and can be overlaid.
+
+### Not built
+
+`GET /dashboard/upcoming-exams` — nothing in the catalogue carries a date, so
+there is no schedule to read. Blocked on decision **D1** in `CLAUDE.md` §5.
+The "Today's Exams" tile has no source until that is settled.

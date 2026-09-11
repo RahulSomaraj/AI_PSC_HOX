@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudentAnalyticsService } from './student-analytics.service';
 import { ExamResultsService } from './exam-results.service';
 import { StudentPerformanceService } from './student-performance.service';
+import { ExamAnalyticsService } from './exam-analytics.service';
 import { StudentAnalyticsController } from './student-analytics.controller';
 import { ExamResultsController } from './exam-results.controller';
 import { ReportsController } from './reports.controller';
@@ -36,6 +37,7 @@ import { ExamPost } from '../exam-posts/entities/exam-post.entity';
     StudentAnalyticsService,
     ExamResultsService,
     StudentPerformanceService,
+    ExamAnalyticsService,
   ],
 })
 export class ReportsModule {}

@@ -13,6 +13,9 @@ import { HttpExceptionFilter } from '../shared/exception-service';
 import { StudentPerformanceService } from './student-performance.service';
 import { StudentPerformanceQueryDto } from './dto/student-performance-query.dto';
 import { StudentPerformanceDto } from './dto/student-performance.dto';
+import { ExamAnalyticsService } from './exam-analytics.service';
+import { ExamAnalyticsQueryDto } from './dto/exam-analytics-query.dto';
+import { ExamAnalyticsDto } from './dto/exam-analytics.dto';
 
 /**
  * The Reports screen: one endpoint per tab.
@@ -32,6 +35,7 @@ import { StudentPerformanceDto } from './dto/student-performance.dto';
 export class ReportsController {
   constructor(
     private readonly studentPerformanceService: StudentPerformanceService,
+    private readonly examAnalyticsService: ExamAnalyticsService,
   ) {}
 
   @Get('student-performance')
@@ -47,5 +51,20 @@ export class ReportsController {
     @Query() query: StudentPerformanceQueryDto,
   ): Promise<StudentPerformanceDto> {
     return this.studentPerformanceService.report(query);
+  }
+
+  @Get('exam-analytics')
+  @ApiOperation({
+    summary: 'Exam Analytics tab (Admin only)',
+    description:
+      'Attempt volume, completion rate and scoring, grouped by course, ' +
+      'with a summary across everything in scope. Grouped by course rather ' +
+      'than by catalogue exam - see API_CONTRACT.md for why.',
+  })
+  @ApiResponse({ status: 200, type: ExamAnalyticsDto })
+  examAnalytics(
+    @Query() query: ExamAnalyticsQueryDto,
+  ): Promise<ExamAnalyticsDto> {
+    return this.examAnalyticsService.report(query);
   }
 }

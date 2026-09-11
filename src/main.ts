@@ -73,6 +73,7 @@ async function bootstrap() {
     .addTag('faculty', 'Faculty and staff management endpoints')
     .addTag('uploads', 'Presigned file upload endpoints')
     .addTag('settings', 'Admin settings lookup endpoints')
+    .addTag('notifications', 'Announcement endpoints')
     .addTag('dashboard', 'Admin dashboard aggregate endpoints')
     .build();
 

@@ -31,6 +31,7 @@ import { AnswerLogModule } from './answer-log/answer-log.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SettingsModule } from './settings/settings.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -124,6 +125,9 @@ import { SettingsModule } from './settings/settings.module';
 
     // Admin settings lookups
     SettingsModule,
+
+    // Admin announcements, and the student's view of them
+    NotificationsModule,
   ],
   controllers: [AppController],
   // Guard order follows provider order: JwtAuthGuard must run first so that

@@ -244,3 +244,93 @@ when roles are all you need.
 
 The list is a compile-time enum, not table rows: it changes only with a
 deploy, so it is safe to fetch once and cache for the session.
+
+---
+
+## Notifications
+
+Announcements an admin sends to students. One row per announcement, not per
+recipient: a message to a 400-student batch is a single row, fanned out at
+read time.
+
+There is **no read/unread state** in this iteration, so a bell icon can show
+a list but not an unread badge. Adding one means a per-recipient table and a
+third endpoint; it does not change the two below.
+
+### `POST /notifications`
+
+**Roles:** `admin`
+
+**Request**
+
+```json
+{
+  "title": "Friday class moved to 4 PM",
+  "body": "This week only, the Friday revision class starts at 4 PM.",
+  "batchId": 3
+}
+```
+
+| Field | Notes |
+|---|---|
+| `title` | Max 200 characters. |
+| `body` | Max 5000 characters. |
+| `batchId` | Optional. Send to one batch. **Omit to send to every student.** |
+
+The author is taken from the JWT — do not send `createdBy`, and note that
+`forbidNonWhitelisted` makes any undeclared property a `400`.
+
+**Response `201`**
+
+```json
+{
+  "id": 12,
+  "title": "Friday class moved to 4 PM",
+  "body": "This week only, the Friday revision class starts at 4 PM.",
+  "batchId": 3,
+  "createdAt": "2026-09-11T10:35:00.000Z"
+}
+```
+
+| Status | When |
+|---|---|
+| `404` | `batchId` names a batch that does not exist or was deleted |
+
+### `GET /notifications`
+
+Everything sent to everyone, plus everything sent to the batch the **caller**
+is in. Newest first.
+
+**Roles:** any authenticated user.
+
+**Query:** `page` (default 1), `limit` (default 10, max 100).
+
+**Response `200`**
+
+```json
+{
+  "items": [
+    {
+      "id": 12,
+      "title": "Friday class moved to 4 PM",
+      "body": "This week only, the Friday revision class starts at 4 PM.",
+      "batchId": 3,
+      "createdAt": "2026-09-11T10:35:00.000Z"
+    }
+  ],
+  "total": 15,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 2
+}
+```
+
+The batch is resolved from the caller's own aspirant profile — there is no
+way to ask for another user's notifications. A caller with no profile or no
+batch (an admin, a staff account, an unassigned student) sees the global
+announcements only, which is a `200` with a shorter list, not an error.
+
+Note this is the *recipient's* view. An admin calling it sees what was sent
+to everyone, **not** an audit of everything they have sent — a batch-targeted
+announcement is invisible to its author here. An admin listing endpoint is
+not part of this iteration.

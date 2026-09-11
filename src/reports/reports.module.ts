@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudentAnalyticsService } from './student-analytics.service';
+import { ExamResultsService } from './exam-results.service';
 import { StudentAnalyticsController } from './student-analytics.controller';
+import { ExamResultsController } from './exam-results.controller';
 import { AnswerLog } from '../answer-log/entities/answer-log.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { User } from '../users/entities/user.entity';
+import { Exam } from '../exam/entities/exam.entity';
+import { ExamPost } from '../exam-posts/entities/exam-post.entity';
 
 /**
  * Read-only analytics over the answer log.
@@ -18,8 +22,10 @@ import { User } from '../users/entities/user.entity';
  * The four Reports tabs land here next and will add their own controller.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([AnswerLog, Subject, User])],
-  controllers: [StudentAnalyticsController],
-  providers: [StudentAnalyticsService],
+  imports: [
+    TypeOrmModule.forFeature([AnswerLog, Subject, User, Exam, ExamPost]),
+  ],
+  controllers: [StudentAnalyticsController, ExamResultsController],
+  providers: [StudentAnalyticsService, ExamResultsService],
 })
 export class ReportsModule {}

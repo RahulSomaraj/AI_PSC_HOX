@@ -926,3 +926,50 @@ account is no longer staff — the same rule `GET /faculty/:id` applies.
 
 A faculty member with nothing authored is **`200` with zeroes and a null
 date**, not a 404.
+
+### `GET /users/:id/recent-content`
+
+Backs the Recently Viewed Content panel on the student profile. Implements
+the `RecentContent` shape in `BACKEND_ISSUES.md`, *Shapes we have already
+built against*.
+
+**Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `limit` | 1–50, default 5. |
+
+**Response `200`** — newest first:
+
+```json
+[
+  {
+    "id": 12,
+    "title": "Indian Polity - Fundamental Rights notes",
+    "kind": "pdf",
+    "viewedAt": "2026-09-12T04:00:00.000Z"
+  }
+]
+```
+
+`id` is the **content item**, not the view — `GET /content/:id` opens it, as
+P2-6 asked ("should reference a real `ContentItem` id rather than carrying a
+loose title"). `kind` is the same enum as `ContentItem.type`, also as asked,
+so it can now return `links` as well as the three P2-6 listed.
+
+**One row per open, not per item.** Reopening the same PDF twice appears
+twice — the panel is *recently viewed*, not *distinct items viewed*, and the
+underlying table counts the same way.
+
+**Not filtered by `status`.** This is history: an item that was published
+when it was read stays in the record after it is pulled back to draft. Items
+that have since been **soft-deleted do** drop out, rather than being listed
+as something nobody can open.
+
+**`404`** for an unknown id, a soft-deleted account, or one whose role is not
+`user` — the same rule as `GET /users/:id/weak-subjects` beside it. A student
+who has opened nothing is **`200` with `[]`**.
+
+> **Rows only exist from 2026-09-12**, when `GET /content/:id` started
+> recording opens. Unlike the answer log there is nothing to backfill from,
+> so this panel is empty for any reading that happened before that date.

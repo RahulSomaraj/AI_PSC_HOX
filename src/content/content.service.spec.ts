@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ContentService, Viewer } from './content.service';
-import { ContentType } from './content-type.enum';
+import { ContentStatus, ContentType } from './content-type.enum';
 
 /** Records the WHERE fragments a query builder was given. */
 const queryBuilderMock = () => {
@@ -39,6 +39,7 @@ describe('ContentService', () => {
   let subjects: any;
   let topics: any;
   let subtopics: any;
+  let examLevels: any;
   let profiles: any;
   let views: any;
   let qb: any;
@@ -46,7 +47,7 @@ describe('ContentService', () => {
 
   const valid = {
     title: 'Fundamental Rights',
-    type: ContentType.Document,
+    type: ContentType.Pdf,
     fileUrl: 'https://bucket.s3.ap-south-1.amazonaws.com/content/a.pdf',
     subjectId: 1,
   };
@@ -65,6 +66,7 @@ describe('ContentService', () => {
     subjects = { existsBy: jest.fn().mockResolvedValue(true) };
     topics = { findOne: jest.fn() };
     subtopics = { findOne: jest.fn() };
+    examLevels = { existsBy: jest.fn().mockResolvedValue(true) };
     profiles = { findOne: jest.fn().mockResolvedValue(null) };
     views = { record: jest.fn().mockResolvedValue(undefined) };
 
@@ -74,15 +76,18 @@ describe('ContentService', () => {
       subjects,
       topics,
       subtopics,
+      examLevels,
       profiles,
       views,
     );
-    // create() and update() re-read through findOne(); give them a row.
+    // create() and update() re-read the row; give them one.
     qb.getOne.mockResolvedValue({
       id: 99,
       title: valid.title,
       batches: [],
+      subjectId: 1,
       subject: { id: 1, name: 'Polity' },
+      createdAt: new Date('2026-09-12T04:00:00.000Z'),
     });
   });
 
@@ -96,7 +101,7 @@ describe('ContentService', () => {
     it('rejects an item that points at two things', async () => {
       await expect(
         service.create(
-          { ...valid, sourceUrl: 'https://youtube.com/watch?v=x' } as any,
+          { ...valid, linkUrl: 'https://youtube.com/watch?v=x' } as any,
           7,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -107,7 +112,7 @@ describe('ContentService', () => {
         {
           ...valid,
           fileUrl: undefined,
-          sourceUrl: 'https://youtube.com/watch?v=x',
+          linkUrl: 'https://youtube.com/watch?v=x',
         } as any,
         7,
       );
@@ -115,7 +120,7 @@ describe('ContentService', () => {
       expect(content.save).toHaveBeenCalledWith(
         expect.objectContaining({
           fileUrl: null,
-          sourceUrl: 'https://youtube.com/watch?v=x',
+          linkUrl: 'https://youtube.com/watch?v=x',
         }),
       );
     });
@@ -166,7 +171,7 @@ describe('ContentService', () => {
         topicId: 5,
         subtopicId: null,
         fileUrl: valid.fileUrl,
-        sourceUrl: null,
+        linkUrl: null,
         batches: [],
       });
       topics.findOne.mockResolvedValue({ id: 5, subjectId: 1 });
@@ -214,23 +219,24 @@ describe('ContentService', () => {
     it('does not restrict staff', async () => {
       await service.findAll({ page: 1, limit: 10 } as any, STAFF);
 
-      expect(wheresOf()).not.toContain('isPublished = true');
+      expect(qb.params.publishedStatus).toBeUndefined();
       expect(wheresOf()).not.toContain('content_batches');
     });
 
     it('lets staff filter drafts explicitly', async () => {
       await service.findAll(
-        { page: 1, limit: 10, isPublished: false } as any,
+        { page: 1, limit: 10, status: ContentStatus.Draft } as any,
         STAFF,
       );
 
-      expect(qb.params.isPublished).toBe(false);
+      expect(qb.params.status).toBe(ContentStatus.Draft);
     });
 
     it('hides drafts from a student', async () => {
       await service.findAll({ page: 1, limit: 10 } as any, STUDENT);
 
-      expect(wheresOf()).toContain('content.isPublished = true');
+      expect(wheresOf()).toContain('content.status = :publishedStatus');
+      expect(qb.params.publishedStatus).toBe(ContentStatus.Published);
     });
 
     it('shows a batchless student only unattached items', async () => {
@@ -266,6 +272,115 @@ describe('ContentService', () => {
       await expect(service.findOne(99, STUDENT)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('the P2-5 shape', () => {
+    const stored = {
+      id: 99,
+      title: 'Fundamental Rights',
+      description: null,
+      type: ContentType.Pdf,
+      fileUrl: 'https://bucket/a.pdf',
+      fileName: 'a.pdf',
+      linkUrl: null,
+      subjectId: 1,
+      topicId: 5,
+      subtopicId: null,
+      examLevelId: 2,
+      status: ContentStatus.Published,
+      subject: { id: 1, name: 'Indian Polity' },
+      topic: { id: 5, name: 'Fundamental Rights' },
+      subtopic: null,
+      examLevel: { id: 2, name: 'LDC (10th Level)' },
+      batches: [
+        { id: 4, name: 'Zulu Batch' },
+        { id: 1, name: 'Alpha Batch' },
+      ],
+      createdBy: 7,
+      createdAt: new Date('2026-09-12T04:00:00.000Z'),
+      updatedAt: new Date('2026-09-12T04:00:00.000Z'),
+    };
+
+    it('returns every field P2-5 names', async () => {
+      qb.getOne.mockResolvedValue(stored);
+
+      const result: any = await service.findOne(99, STAFF);
+
+      expect(result).toMatchObject({
+        id: 99,
+        type: 'pdf',
+        fileUrl: 'https://bucket/a.pdf',
+        fileName: 'a.pdf',
+        linkUrl: null,
+        subjectId: 1,
+        topicId: 5,
+        examLevelId: 2,
+        status: 'published',
+      });
+      // batchIds, not just the nested objects.
+      expect(result.batchIds).toEqual([1, 4]);
+    });
+
+    it('renders uploadedAt as a day, never a timestamp', async () => {
+      qb.getOne.mockResolvedValue(stored);
+
+      const result: any = await service.findOne(99, STAFF);
+
+      // 04:00 UTC on the 12th is 09:30 on the 12th in Asia/Kolkata.
+      expect(result.uploadedAt).toBe('2026-09-12');
+    });
+
+    it('name-sorts batches, and keeps batchIds in the same order', async () => {
+      qb.getOne.mockResolvedValue(stored);
+
+      const result: any = await service.findOne(99, STAFF);
+
+      expect(result.batches.map((b: any) => b.name)).toEqual([
+        'Alpha Batch',
+        'Zulu Batch',
+      ]);
+      expect(result.batchIds).toEqual(result.batches.map((b: any) => b.id));
+    });
+
+    it('carries the resolved names beside the ids, as extras', async () => {
+      qb.getOne.mockResolvedValue(stored);
+
+      const result: any = await service.findOne(99, STAFF);
+
+      expect(result.subject).toEqual({ id: 1, name: 'Indian Polity' });
+      expect(result.examLevel).toEqual({ id: 2, name: 'LDC (10th Level)' });
+      expect(result.subtopic).toBeNull();
+    });
+  });
+
+  describe('exam level', () => {
+    it('404s an exam level that does not exist', async () => {
+      examLevels.existsBy.mockResolvedValue(false);
+
+      await expect(
+        service.create({ ...valid, examLevelId: 99 } as any, 7),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(content.save).not.toHaveBeenCalled();
+    });
+
+    it('does not look one up when none was sent', async () => {
+      await service.create(valid as any, 7);
+
+      expect(examLevels.existsBy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('search', () => {
+    it('matches the title only, not the description', async () => {
+      await service.findAll(
+        { page: 1, limit: 10, search: 'polity' } as any,
+        STAFF,
+      );
+
+      const clause = qb.wheres.find((w: string) => w.includes('ILIKE'));
+      expect(clause).toContain('content.title');
+      expect(clause).not.toContain('content.description');
     });
   });
 

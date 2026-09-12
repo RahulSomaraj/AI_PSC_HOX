@@ -15,18 +15,26 @@ import { Batch } from '../../batches/entities/batch.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 import { Topic } from '../../topics/entities/topic.entity';
 import { Subtopic } from '../../subtopics/entities/subtopic.entity';
-import { ContentType } from '../content-type.enum';
+import { ExamLevel } from '../../exam-levels/entities/exam-level.entity';
+import { ContentStatus, ContentType } from '../content-type.enum';
 
 /**
  * One item in the study library - a set of notes, a lecture video, a
  * circular worth keeping.
  *
- * Filed against the same subject/topic/subtopic taxonomy questions use, so
- * "you are weak at Indian Polity" can one day become "here is the material
- * for it" without a second classification scheme.
+ * The field names and the two enums follow `BACKEND_ISSUES.md` P2-5, which
+ * the console's Content Library screens were built and tested against.
+ *
+ * `topicId` and `subtopicId` go beyond that shape deliberately. Questions
+ * are tagged to subtopic depth, and Weak Subjects rolls up by subject; if
+ * content were filed only to subject and exam level, "you are weak on
+ * Fundamental Rights, here is the material" could never be built - only the
+ * far blunter "you are weak on Indian Polity". They are nullable extras, so
+ * a client that ignores them sees exactly the P2-5 shape.
  */
 @Index('IDX_content_subject_id', ['subjectId'])
-@Index('IDX_content_is_published', ['isPublished'])
+@Index('IDX_content_exam_level_id', ['examLevelId'])
+@Index('IDX_content_status', ['status'])
 @Entity({ name: 'content' })
 export class Content {
   @PrimaryGeneratedColumn()
@@ -45,24 +53,28 @@ export class Content {
    * Where the material actually is. Exactly one of these is set.
    *
    * `fileUrl` is the `fileUrl` handed back by `POST /uploads` - something in
-   * our own bucket. `sourceUrl` is somewhere else entirely: a YouTube
-   * lecture, a PSC circular on a government site. Keeping them in separate
-   * columns rather than one `url` means a later feature - re-hosting,
-   * link-rot checks, signed reads for private material - can tell the two
-   * apart without guessing from the hostname.
+   * our own bucket. `linkUrl` is somewhere else entirely: a YouTube lecture,
+   * a PSC circular on a government site. Keeping them in separate columns
+   * rather than one `url` means a later feature - re-hosting, link-rot
+   * checks, signed reads for private material - can tell the two apart
+   * without guessing from the hostname.
    */
   @Column({ name: 'file_url', type: 'text', nullable: true })
   fileUrl: string | null;
 
-  @Column({ name: 'source_url', type: 'text', nullable: true })
-  sourceUrl: string | null;
+  /** The name to show once a file is attached. Null for a link. */
+  @Column({ name: 'file_name', type: 'varchar', length: 255, nullable: true })
+  fileName: string | null;
 
-  @Column({ name: 'subject_id', type: 'int' })
-  subjectId: number;
+  @Column({ name: 'link_url', type: 'text', nullable: true })
+  linkUrl: string | null;
 
-  @ManyToOne(() => Subject, { onDelete: 'RESTRICT' })
+  @Column({ name: 'subject_id', type: 'int', nullable: true })
+  subjectId: number | null;
+
+  @ManyToOne(() => Subject, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'subject_id' })
-  subject: Subject;
+  subject: Subject | null;
 
   @Column({ name: 'topic_id', type: 'int', nullable: true })
   topicId: number | null;
@@ -77,6 +89,13 @@ export class Content {
   @ManyToOne(() => Subtopic, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'subtopic_id' })
   subtopic: Subtopic | null;
+
+  @Column({ name: 'exam_level_id', type: 'int', nullable: true })
+  examLevelId: number | null;
+
+  @ManyToOne(() => ExamLevel, { onDelete: 'RESTRICT', nullable: true })
+  @JoinColumn({ name: 'exam_level_id' })
+  examLevel: ExamLevel | null;
 
   /**
    * Which batches the item is restricted to. **Empty means every student.**
@@ -95,8 +114,8 @@ export class Content {
   batches: Batch[];
 
   /** Students see published items only. Authors and admins see both. */
-  @Column({ name: 'is_published', type: 'boolean', default: false })
-  isPublished: boolean;
+  @Column({ type: 'varchar', length: 20, default: ContentStatus.Draft })
+  status: ContentStatus;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

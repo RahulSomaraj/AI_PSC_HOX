@@ -60,16 +60,20 @@ export class ContentView {
   user: User;
 
   /**
-   * The item's subject, copied in at write time.
+   * The item's subject, copied in at write time. Null if it had none.
    *
    * Denormalised for the same reason `answer_log` denormalises its three
    * taxonomy ids: Content Usage groups by subject, and re-joining `content`
    * on every aggregate will not hold up. It also keeps the figure honest -
    * re-filing an item under a different subject next term does not rewrite
    * what was true when it was read.
+   *
+   * Nullable because `content.subject_id` is: P2-5 files an item under a
+   * subject optionally, so views-per-subject has an "untagged" bucket and
+   * cannot be a simple GROUP BY without one.
    */
-  @Column({ name: 'subject_id', type: 'int' })
-  subjectId: number;
+  @Column({ name: 'subject_id', type: 'int', nullable: true })
+  subjectId: number | null;
 
   /**
    * The batch the **reader** was in, copied in at write time. Null if they

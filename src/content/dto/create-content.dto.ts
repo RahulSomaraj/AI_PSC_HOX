@@ -3,7 +3,6 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
-  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -12,7 +11,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { ContentType } from '../content-type.enum';
+import { ContentStatus, ContentType } from '../content-type.enum';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -31,19 +30,29 @@ export class CreateContentDto {
   @Transform(trim)
   description?: string;
 
-  @ApiProperty({ enum: ContentType, example: ContentType.Document })
+  @ApiProperty({ enum: ContentType, example: ContentType.Pdf })
   @IsEnum(ContentType)
   type: ContentType;
 
   @ApiPropertyOptional({
     description:
-      'The `fileUrl` returned by POST /uploads. Send this or `sourceUrl`, never both.',
+      'The `fileUrl` returned by POST /uploads. Send this or `linkUrl`, never both.',
   })
   @IsOptional()
   @IsUrl({ require_tld: false })
   @MaxLength(2048)
   @Transform(trim)
   fileUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'kerala-psc-2024-notes.pdf',
+    description: 'Display name for an attached file.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Transform(trim)
+  fileName?: string;
 
   @ApiPropertyOptional({
     example: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -54,20 +63,18 @@ export class CreateContentDto {
   @IsUrl()
   @MaxLength(2048)
   @Transform(trim)
-  sourceUrl?: string;
+  linkUrl?: string;
 
-  @ApiProperty({
-    minimum: 1,
-    description: 'Subject the material is filed under.',
-  })
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  subjectId: number;
+  subjectId?: number;
 
   @ApiPropertyOptional({
     minimum: 1,
-    description: 'Must belong to `subjectId`.',
+    description: 'Must belong to `subjectId`, which is then required.',
   })
   @IsOptional()
   @Type(() => Number)
@@ -77,13 +84,21 @@ export class CreateContentDto {
 
   @ApiPropertyOptional({
     minimum: 1,
-    description: 'Must belong to `topicId`, which is then required.',
+    description:
+      'Beyond the P2-5 shape. Must belong to `topicId`, which is then required.',
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   subtopicId?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  examLevelId?: number;
 
   @ApiPropertyOptional({
     type: [Number],
@@ -100,16 +115,11 @@ export class CreateContentDto {
   batchIds?: number[];
 
   @ApiPropertyOptional({
-    default: false,
+    enum: ContentStatus,
+    default: ContentStatus.Draft,
     description: 'Students see published items only. Defaults to draft.',
   })
   @IsOptional()
-  @Transform(({ obj, key }) => {
-    const value = obj[key];
-    if (value === 'true' || value === true) return true;
-    if (value === 'false' || value === false) return false;
-    return value;
-  })
-  @IsBoolean()
-  isPublished?: boolean;
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
 }

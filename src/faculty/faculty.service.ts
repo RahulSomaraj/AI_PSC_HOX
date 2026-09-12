@@ -12,6 +12,7 @@ import { Subject } from '../subjects/entities/subject.entity';
 import { Batch } from '../batches/entities/batch.entity';
 import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
+import { ContentStatus } from '../content/content-type.enum';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { Role } from '../common/enums/role.enum';
@@ -148,7 +149,7 @@ export class FacultyService {
       questions.countBy({ createdBy: authorId }),
       questions.countBy({ createdBy: authorId, isActive: true }),
       content.countBy({ createdBy: authorId }),
-      content.countBy({ createdBy: authorId, isPublished: true }),
+      content.countBy({ createdBy: authorId, status: ContentStatus.Published }),
       lastAuthoredIn(questions, 'question'),
       lastAuthoredIn(content, 'content'),
     ]);

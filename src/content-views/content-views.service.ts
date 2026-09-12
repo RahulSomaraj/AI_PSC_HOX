@@ -11,7 +11,7 @@ import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.
  */
 export interface ViewedItem {
   id: number;
-  subjectId: number;
+  subjectId: number | null;
 }
 
 /** Who opened it, as `ContentService` already knows them. */

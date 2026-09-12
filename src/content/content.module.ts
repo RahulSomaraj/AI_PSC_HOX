@@ -7,6 +7,7 @@ import { Batch } from '../batches/entities/batch.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { Topic } from '../topics/entities/topic.entity';
 import { Subtopic } from '../subtopics/entities/subtopic.entity';
+import { ExamLevel } from '../exam-levels/entities/exam-level.entity';
 import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
 import { ContentViewsModule } from '../content-views/content-views.module';
 
@@ -31,6 +32,7 @@ import { ContentViewsModule } from '../content-views/content-views.module';
       Subject,
       Topic,
       Subtopic,
+      ExamLevel,
       AspirantProfile,
     ]),
 

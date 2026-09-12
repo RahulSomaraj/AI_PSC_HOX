@@ -24,6 +24,7 @@ import { Subject } from '../subjects/entities/subject.entity';
 import { Batch } from '../batches/entities/batch.entity';
 import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
+import { ContentStatus } from '../content/content-type.enum';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { FacultyRole } from './faculty-role.enum';
@@ -432,7 +433,7 @@ describe('FacultyService', () => {
       });
       expect(repos.get(Content).countBy).toHaveBeenCalledWith({
         createdBy: 20,
-        isPublished: true,
+        status: ContentStatus.Published,
       });
     });
 

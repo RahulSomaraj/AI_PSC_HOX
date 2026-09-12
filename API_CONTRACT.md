@@ -688,17 +688,21 @@ that stops being true quickly.
 
 ## Content Library
 
-Study material — notes, lecture video, documents — filed against the same
-`subject → topic → subtopic` taxonomy questions use, and optionally
-restricted to one or more batches.
+Study material — video, PDFs, notes and links — following the shape in
+`BACKEND_ISSUES.md` **P2-5**, which the console's Content Library screens were
+built and tested against.
 
-**An item points at exactly one thing:** either `fileUrl` (something uploaded
-through `POST /uploads`) or `sourceUrl` (a link to material hosted
-elsewhere). Sending both, or neither, is a `400`.
+**Two fields go beyond P2-5:** `subtopicId` and `topicId`'s companion filters.
+Questions are tagged to subtopic depth and Weak Subjects rolls up by subject,
+so filing content the same way is what lets "you are weak on Fundamental
+Rights, here is the material" exist later. Both are nullable — a client that
+ignores them sees exactly the P2-5 shape.
 
-**Batches are a restriction, not a requirement.** An item with no batches
-attached is visible to every student — the shared shelf. Attaching batches
-narrows it to those batches only.
+**An item points at exactly one thing:** either `fileUrl` (from
+`POST /uploads`) or `linkUrl` (hosted elsewhere). Both, or neither, is a `400`.
+
+**Batches are a restriction, not a requirement.** `batchIds: []` means visible
+to *every* student — the shared shelf. Attaching batches narrows it to those.
 
 ### `POST /content`
 
@@ -708,31 +712,33 @@ narrows it to those batches only.
 {
   "title": "Indian Polity - Fundamental Rights notes",
   "description": "Covers Articles 12 to 35, with PYQ tags.",
-  "type": "document",
+  "type": "pdf",
   "fileUrl": "https://psc-uploads.s3.ap-south-1.amazonaws.com/content/2026/09/3f1a....pdf",
+  "fileName": "kerala-psc-2024-notes.pdf",
   "subjectId": 1,
   "topicId": 5,
+  "examLevelId": 2,
   "batchIds": [1, 4],
-  "isPublished": false
+  "status": "draft"
 }
 ```
 
 | Field | Notes |
 |---|---|
-| `type` | `note`, `video` or `document`. A label for filtering and icons — a `video` may be either an upload or a link. |
-| `fileUrl` / `sourceUrl` | Exactly one. |
-| `subjectId` | **Required.** |
-| `topicId` | Optional, must belong to `subjectId`. |
-| `subtopicId` | Optional, must belong to `topicId` — which then becomes required. |
-| `batchIds` | Optional. Omit or send `[]` for every student. |
-| `isPublished` | Defaults to `false`, i.e. draft. |
-
-Returns the created item in the `GET /content/:id` shape below.
+| `type` | `video`, `pdf`, `notes` or `links` — the four the form offers. The list's `article` type is **not** accepted; that is your Q40. |
+| `fileUrl` / `linkUrl` | Exactly one. |
+| `fileName` | Display name for an attached file. |
+| `subjectId` | Optional. |
+| `topicId` | Optional, must belong to `subjectId` — which is then required. |
+| `subtopicId` | **Beyond P2-5.** Optional, must belong to `topicId`. |
+| `examLevelId` | Optional. |
+| `batchIds` | Optional. Omit or `[]` for every student. |
+| `status` | `draft` (default) or `published`. |
 
 | Status | When |
 |---|---|
-| `400` | Both or neither source · a subtopic with no topic · a topic not under the subject |
-| `404` | Subject, topic, subtopic or batch not found |
+| `400` | Both or neither source · a topic with no subject · a topic not under the subject |
+| `404` | Subject, topic, subtopic, exam level or batch not found |
 
 ### `GET /content`
 
@@ -741,15 +747,17 @@ Returns the created item in the `GET /content/:id` shape below.
 | Caller | Sees |
 |---|---|
 | `admin`, `staff` | Everything, drafts included |
-| a student | Published items only, and among those only ones with **no batches attached** or attached to **their own** batch |
+| a student | `published` only, and among those only ones with **no batches attached** or attached to **their own** batch |
 
-**Query:** `page` (default 1), `limit` (default 10, max 100), `search`
-(title and description), `type`, `subjectId`, `topicId`, `subtopicId`,
-`batchId`, `isPublished`.
+**Query:** `page` (1), `limit` (10, max 100), `search`, `type`, `subjectId`,
+`examLevelId`, `status` — plus `topicId`, `subtopicId` and `batchId` beyond
+P2-5.
 
-`batchId` and `isPublished` are staff filters. A student sending them is not
-an error — they are ignored, because a student's visibility is fixed by who
-they are.
+`search` matches the **title only**, per P2-5. `status` and `batchId` are staff
+filters; a student sending them is not an error, they are ignored, because a
+student's visibility is fixed by who they are.
+
+Ordered newest first, `id` ascending within a day.
 
 **Response `200`**
 
@@ -760,53 +768,69 @@ they are.
       "id": 12,
       "title": "Indian Polity - Fundamental Rights notes",
       "description": "Covers Articles 12 to 35, with PYQ tags.",
-      "type": "document",
+      "type": "pdf",
       "fileUrl": "https://psc-uploads.s3.../content/2026/09/3f1a....pdf",
-      "sourceUrl": null,
+      "fileName": "kerala-psc-2024-notes.pdf",
+      "linkUrl": null,
+      "subjectId": 1,
+      "topicId": 5,
+      "subtopicId": null,
+      "examLevelId": 2,
+      "batchIds": [1, 4],
+      "status": "published",
+      "uploadedAt": "2026-09-12",
+
       "subject": { "id": 1, "name": "Indian Polity" },
       "topic": { "id": 5, "name": "Fundamental Rights" },
       "subtopic": null,
+      "examLevel": { "id": 2, "name": "LDC (10th Level)" },
       "batches": [
         { "id": 1, "name": "Alpha Batch 2026" },
         { "id": 4, "name": "Evening LDC 2026" }
       ],
-      "isPublished": true,
       "createdBy": 7,
-      "createdAt": "2026-09-11T10:35:00.000Z",
-      "updatedAt": "2026-09-11T10:35:00.000Z"
+      "createdAt": "2026-09-12T04:00:00.000Z",
+      "updatedAt": "2026-09-12T04:00:00.000Z"
     }
   ],
-  "total": 40,
-  "page": 1,
-  "limit": 10,
-  "totalPages": 4
+  "total": 40, "page": 1, "limit": 10, "totalPages": 4
 }
 ```
 
-`batches` is always the item's **full** batch list, name-sorted — filtering
-by `batchId` does not trim it. `[]` means visible to everyone.
+The fields above the blank line are P2-5. Below it are **extras you may
+ignore** — the resolved names beside each id, so the Linked Batches chips and
+the subject column render without a second round trip. `batches` is always the
+item's *full* list, name-sorted, and `batchIds` follows the same order;
+filtering by `batchId` does not trim either.
+
+**`uploadedAt` is a day, never a timestamp** — as P2-5 asks. It is `createdAt`
+bucketed in `ACTIVITY_TIMEZONE` (default `Asia/Kolkata`), so the day is decided
+once on the server rather than shifting per client. The raw `createdAt` is
+there too if you need the time.
 
 ### `GET /content/:id`
 
-Same shape as one `items` entry. Same visibility rule.
+Same shape as one `items` entry, same visibility rule.
 
 A student requesting a draft, or another batch's material, gets `404` rather
 than `403` — being refused would itself confirm the item exists.
+
+**This is also the endpoint that records a view.** See *view tracking* below.
 
 ### `PATCH /content/:id`
 
 **Roles:** `admin`, `staff`. Any subset of the `POST` fields.
 
-- **`batchIds` replaces the whole set.** Omit it to leave attachments alone;
-  send `[]` to detach everything and make the item visible to all students.
-- Publish by sending `{ "isPublished": true }`.
-- Taxonomy is validated **after** the merge, not on the body alone. A PATCH
-  sending only `subjectId` is rejected if the topic already stored does not
-  belong to the new subject — nothing in the body is wrong on its own, but
-  the resulting row would be.
-- `forbidNonWhitelisted` applies: never PATCH back an object you got from a
-  GET. The response carries `subject`, `createdBy` and friends, none of which
-  the DTO declares.
+- **`batchIds` replaces the whole set.** Omit to leave attachments alone; send
+  `[]` to detach everything and make the item visible to all students.
+- Publish with `{ "status": "published" }`. Everything the console saves is a
+  draft today, so this is the only way to publish.
+- Taxonomy is validated **after** the merge. A PATCH sending only `subjectId`
+  is rejected if the stored topic does not belong to the new subject — nothing
+  in the body is wrong alone, but the resulting row would be.
+- `forbidNonWhitelisted` applies: never PATCH back an object from a GET. The
+  response carries `subject`, `uploadedAt`, `createdBy` and friends, none of
+  which the DTO declares.
 
 ### `DELETE /content/:id`
 
@@ -825,7 +849,7 @@ it, and there is no endpoint to post a view: opening an item *is* the event.
 |---|---|
 | `content_id` | RESTRICT. Content is soft-deleted, so this only ever refuses a hard delete. |
 | `user_id` | CASCADE, matching `answer_log`. A soft-deleted user keeps their history. |
-| `subject_id` | The item's subject, **copied in at write time**. |
+| `subject_id` | The item's subject, **copied in at write time**. Nullable, because `content.subject_id` is — so views-per-subject has an untagged bucket. |
 | `batch_id` | The **reader's** batch at the time, or null. Copied in the same way. |
 | `viewed_at` | Timestamp. |
 

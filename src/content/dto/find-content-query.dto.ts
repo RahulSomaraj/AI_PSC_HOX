@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
-  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -10,7 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { ContentType } from '../content-type.enum';
+import { ContentStatus, ContentType } from '../content-type.enum';
 
 export class FindContentQueryDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
@@ -28,7 +27,9 @@ export class FindContentQueryDto {
   @Max(100)
   limit: number = 10;
 
-  @ApiPropertyOptional({ description: 'Search title and description.' })
+  @ApiPropertyOptional({
+    description: 'Matches the title only, per P2-5 - not the description.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -52,9 +53,22 @@ export class FindContentQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  examLevelId?: number;
+
+  @ApiPropertyOptional({
+    minimum: 1,
+    description: 'Beyond the P2-5 query set.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   topicId?: number;
 
-  @ApiPropertyOptional({ minimum: 1 })
+  @ApiPropertyOptional({
+    minimum: 1,
+    description: 'Beyond the P2-5 query set.',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -73,17 +87,11 @@ export class FindContentQueryDto {
   batchId?: number;
 
   @ApiPropertyOptional({
-    type: Boolean,
+    enum: ContentStatus,
     description:
       'Admin and staff only. Students always see published items and nothing else.',
   })
   @IsOptional()
-  @Transform(({ obj, key }) => {
-    const value = obj[key];
-    if (value === 'true' || value === true) return true;
-    if (value === 'false' || value === false) return false;
-    return value;
-  })
-  @IsBoolean()
-  isPublished?: boolean;
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
 }

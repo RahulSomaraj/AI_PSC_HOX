@@ -44,7 +44,7 @@ describe('Content HTTP contract', () => {
   };
   const input = {
     title: 'Fundamental Rights',
-    type: 'document',
+    type: 'pdf',
     fileUrl: 'https://bucket.s3.ap-south-1.amazonaws.com/content/a.pdf',
     subjectId: 1,
   };

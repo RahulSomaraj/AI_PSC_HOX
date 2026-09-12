@@ -651,6 +651,13 @@ Making it work needs, in order:
 2. A write on the content read path, in the module that owns it.
 3. Then the tab itself: views per item, per subject, per batch, over time.
 
+> **1 and 2 shipped on 2026-09-12.** `content_view` exists and
+> `GET /content/:id` writes to it. `subject_id` and `batch_id` are
+> denormalised at write time so all three groupings in step 3 aggregate
+> without joining `content` — see **Content Library → View tracking** for the
+> column list and for what is deliberately *not* counted. Step 3 is still
+> open, and rows only accumulate from the date above.
+
 **There is nothing to backfill from.** Unlike exam answers, which could be
 reconstructed from `exams.answers`, a content view leaves no trace anywhere —
 every day without the write path is a day of usage data that cannot be
@@ -788,3 +795,43 @@ than `403` — being refused would itself confirm the item exists.
 ```json
 { "message": "Content deleted successfully" }
 ```
+
+### Content Library — view tracking
+
+`GET /content/:id` records one row in `content_view`. Nothing else writes to
+it, and there is no endpoint to post a view: opening an item *is* the event.
+
+| Column | Notes |
+|---|---|
+| `content_id` | RESTRICT. Content is soft-deleted, so this only ever refuses a hard delete. |
+| `user_id` | CASCADE, matching `answer_log`. A soft-deleted user keeps their history. |
+| `subject_id` | The item's subject, **copied in at write time**. |
+| `batch_id` | The **reader's** batch at the time, or null. Copied in the same way. |
+| `viewed_at` | Timestamp. |
+
+Both ids are denormalised for the reason `answer_log` denormalises its
+taxonomy: Content Usage groups by subject and by batch, and re-joining
+`content` on every aggregate will not hold up. It also keeps the history
+honest — re-filing an item under a different subject next term does not
+rewrite what was true when it was read.
+
+`batch_id` is the reader's batch, not the item's. An item can be attached to
+several batches at once, so "views per batch" can only mean which cohorts are
+actually consuming material.
+
+**Three things that shape the numbers:**
+
+1. **Staff opens are not recorded.** An admin checking that a PDF renders
+   should not move a figure on a usage report, and "views per batch" has no
+   answer for someone in no batch. This also keeps `POST /content` and
+   `PATCH /content/:id` out of the table — both end by re-reading the item.
+   One line in `ContentViewsService.record()` if that should change.
+2. **One row per open, no dedup window.** Reopening the same PDF three times
+   is three rows, the way `answer_log` counts repeated practice on one
+   question. If refresh loops inflate the figures, throttle it in that same
+   service.
+3. **A failed write is swallowed and logged, never surfaced.** A student gets
+   their content even when the view table is unreachable.
+
+Rows accumulate from 2026-09-12 only — unlike the answer log, there is
+nothing to backfill from, because no earlier record of a content open exists.

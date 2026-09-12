@@ -8,6 +8,7 @@ import { Subject } from '../subjects/entities/subject.entity';
 import { Topic } from '../topics/entities/topic.entity';
 import { Subtopic } from '../subtopics/entities/subtopic.entity';
 import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.entity';
+import { ContentViewsModule } from '../content-views/content-views.module';
 
 /**
  * The study library: notes, lecture video and documents, filed against the
@@ -32,6 +33,9 @@ import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.
       Subtopic,
       AspirantProfile,
     ]),
+
+    // The write side of Reports -> Content Usage. findOne() records an open.
+    ContentViewsModule,
   ],
   controllers: [ContentController],
   providers: [ContentService],

@@ -14,6 +14,7 @@ import { AspirantProfile } from '../aspirant-profiles/entities/aspirant-profile.
 import { CreateContentDto } from './dto/create-content.dto';
 import { UpdateContentDto } from './dto/update-content.dto';
 import { FindContentQueryDto } from './dto/find-content-query.dto';
+import { ContentViewsService } from '../content-views/content-views.service';
 
 /** Who is asking. Students are narrowed to what they may see. */
 export interface Viewer {
@@ -37,6 +38,7 @@ export class ContentService {
     private readonly subtopics: Repository<Subtopic>,
     @InjectRepository(AspirantProfile)
     private readonly profiles: Repository<AspirantProfile>,
+    private readonly contentViews: ContentViewsService,
   ) {}
 
   async create(dto: CreateContentDto, actorId: number) {
@@ -135,6 +137,10 @@ export class ContentService {
     // A draft, or another batch's material, is 404 rather than 403: a
     // student should not learn an item exists by being refused it.
     if (!record) throw new NotFoundException('Content not found');
+
+    // Below the 404 on purpose: an open is only an open once the reader was
+    // actually allowed in. Never throws - see ContentViewsService.record().
+    await this.contentViews.record(record, viewer);
 
     return this.present(record);
   }

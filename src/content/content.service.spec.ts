@@ -40,6 +40,7 @@ describe('ContentService', () => {
   let topics: any;
   let subtopics: any;
   let profiles: any;
+  let views: any;
   let qb: any;
   let service: ContentService;
 
@@ -65,6 +66,7 @@ describe('ContentService', () => {
     topics = { findOne: jest.fn() };
     subtopics = { findOne: jest.fn() };
     profiles = { findOne: jest.fn().mockResolvedValue(null) };
+    views = { record: jest.fn().mockResolvedValue(undefined) };
 
     service = new ContentService(
       content,
@@ -73,6 +75,7 @@ describe('ContentService', () => {
       topics,
       subtopics,
       profiles,
+      views,
     );
     // create() and update() re-read through findOne(); give them a row.
     qb.getOne.mockResolvedValue({
@@ -263,6 +266,37 @@ describe('ContentService', () => {
       await expect(service.findOne(99, STUDENT)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('view tracking', () => {
+    it('records the open, with the reader that asked', async () => {
+      const record = { id: 99, subjectId: 1, batches: [] };
+      qb.getOne.mockResolvedValue(record);
+
+      await service.findOne(99, STUDENT);
+
+      expect(views.record).toHaveBeenCalledWith(record, STUDENT);
+    });
+
+    it('records nothing when the reader was refused', async () => {
+      qb.getOne.mockResolvedValue(null);
+
+      await expect(service.findOne(99, STUDENT)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(views.record).not.toHaveBeenCalled();
+    });
+
+    it('leaves it to the service to decide a staff preview is not usage', async () => {
+      // findOne hands over the reader unfiltered rather than second-guessing
+      // it here, so the rule lives in exactly one place.
+      const record = { id: 99, subjectId: 1, batches: [] };
+      qb.getOne.mockResolvedValue(record);
+
+      await service.findOne(99, STAFF);
+
+      expect(views.record).toHaveBeenCalledWith(record, STAFF);
     });
   });
 

@@ -835,3 +835,50 @@ actually consuming material.
 
 Rows accumulate from 2026-09-12 only — unlike the answer log, there is
 nothing to backfill from, because no earlier record of a content open exists.
+
+---
+
+## Faculty
+
+### `GET /faculty/:id/contributions`
+
+What one faculty member has authored — questions, and content library items.
+
+**Roles:** `admin`
+
+**Response `200`**
+
+```json
+{
+  "facultyId": 10,
+  "userId": 20,
+  "questions": { "total": 143, "active": 140 },
+  "content": { "total": 12, "published": 9 },
+  "lastContributedAt": "2026-09-11T06:12:44.000Z"
+}
+```
+
+| Field | Notes |
+|---|---|
+| `userId` | The staff account that wrote the rows. Audit columns carry this, not `facultyId`. |
+| `questions.total` | Questions authored. |
+| `questions.active` | Of those, still in rotation (`isActive`). |
+| `content.total` | Live library items authored. |
+| `content.published` | Of those, published rather than draft. |
+| `lastContributedAt` | Latest authorship across both, or `null`. |
+
+**The two halves count differently, because the two tables delete
+differently.** `DELETE /questions/:id` is a *hard* delete, so every question
+row that survives is a real contribution and `active` is the only split worth
+drawing. Content is soft-deleted, so a deleted item leaves `content.total`
+entirely — a contribution someone withdrew is not a contribution.
+
+`lastContributedAt` is a full ISO timestamp, not a date. The audit columns
+are `timestamptz`, and rendering a day means choosing a timezone — which is
+the client's call, not one to bake into the response.
+
+**`404`** for an unknown id, a soft-deleted faculty record, or one whose
+account is no longer staff — the same rule `GET /faculty/:id` applies.
+
+A faculty member with nothing authored is **`200` with zeroes and a null
+date**, not a 404.

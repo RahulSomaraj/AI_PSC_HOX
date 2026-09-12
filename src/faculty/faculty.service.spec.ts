@@ -6,6 +6,13 @@ jest.mock('../subjects/entities/subject.entity', () => ({
 jest.mock('../batches/entities/batch.entity', () => ({
   Batch: class Batch {},
 }));
+// Contributions counts rows in both; neither entity's shape matters here.
+jest.mock('../questions/entities/question.entity', () => ({
+  Question: class Question {},
+}));
+jest.mock('../content/entities/content.entity', () => ({
+  Content: class Content {},
+}));
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -15,6 +22,8 @@ import { Faculty } from './entities/faculty.entity';
 import { User } from '../users/entities/user.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { Batch } from '../batches/entities/batch.entity';
+import { Question } from '../questions/entities/question.entity';
+import { Content } from '../content/entities/content.entity';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { FacultyRole } from './faculty-role.enum';
@@ -43,6 +52,7 @@ function queryBuilder() {
   qb.getManyAndCount = jest.fn();
   qb.getOne = jest.fn();
   qb.getRawMany = jest.fn().mockResolvedValue([]);
+  qb.getRawOne = jest.fn().mockResolvedValue(undefined);
   return qb;
 }
 
@@ -96,6 +106,8 @@ describe('FacultyService', () => {
       Batch,
       UserSession,
       PasswordResetToken,
+      Question,
+      Content,
     ]) {
       repos.set(entity, {
         create: jest.fn((value) => ({ ...value })),
@@ -351,6 +363,119 @@ describe('FacultyService', () => {
       'database unavailable',
     );
     expect(qb.getOne).not.toHaveBeenCalled();
+  });
+
+  describe('contributions', () => {
+    /** The six reads, in the order `contributions` issues them. */
+    const authored = (
+      questionsTotal: number,
+      questionsActive: number,
+      contentTotal: number,
+      contentPublished: number,
+      lastQuestionAt: Date | null,
+      lastContentAt: Date | null,
+    ) => {
+      repos
+        .get(Question)
+        .countBy.mockResolvedValueOnce(questionsTotal)
+        .mockResolvedValueOnce(questionsActive);
+      repos
+        .get(Content)
+        .countBy.mockResolvedValueOnce(contentTotal)
+        .mockResolvedValueOnce(contentPublished);
+      qb.getRawOne
+        .mockResolvedValueOnce({ lastAt: lastQuestionAt })
+        .mockResolvedValueOnce({ lastAt: lastContentAt });
+    };
+
+    it('counts both halves and reports the latest authorship', async () => {
+      authored(
+        143,
+        140,
+        12,
+        9,
+        new Date('2026-09-01T00:00:00.000Z'),
+        new Date('2026-09-11T06:12:44.000Z'),
+      );
+
+      expect(await service.contributions(10)).toEqual({
+        facultyId: 10,
+        userId: 20,
+        questions: { total: 143, active: 140 },
+        content: { total: 12, published: 9 },
+        lastContributedAt: '2026-09-11T06:12:44.000Z',
+      });
+    });
+
+    it('keys off the staff account, not the faculty row id', async () => {
+      authored(0, 0, 0, 0, null, null);
+
+      await service.contributions(10);
+
+      // record.userId is 20; the faculty row is 10. Audit columns carry 20.
+      expect(repos.get(Question).countBy).toHaveBeenCalledWith({
+        createdBy: 20,
+      });
+      expect(repos.get(Content).countBy).toHaveBeenCalledWith({
+        createdBy: 20,
+      });
+    });
+
+    it('splits retired questions and unpublished content out of the totals', async () => {
+      authored(143, 140, 12, 9, null, null);
+
+      await service.contributions(10);
+
+      expect(repos.get(Question).countBy).toHaveBeenCalledWith({
+        createdBy: 20,
+        isActive: true,
+      });
+      expect(repos.get(Content).countBy).toHaveBeenCalledWith({
+        createdBy: 20,
+        isPublished: true,
+      });
+    });
+
+    it('takes the later of the two dates when questions came last', async () => {
+      authored(
+        1,
+        1,
+        1,
+        1,
+        new Date('2026-09-11T06:12:44.000Z'),
+        new Date('2026-09-01T00:00:00.000Z'),
+      );
+
+      const result = await service.contributions(10);
+
+      expect(result.lastContributedAt).toBe('2026-09-11T06:12:44.000Z');
+    });
+
+    it('reports null for someone who has authored nothing', async () => {
+      authored(0, 0, 0, 0, null, null);
+
+      const result = await service.contributions(10);
+
+      expect(result.lastContributedAt).toBeNull();
+      expect(result.questions).toEqual({ total: 0, active: 0 });
+    });
+
+    it('still dates the contribution when only one side has any', async () => {
+      authored(4, 4, 0, 0, new Date('2026-09-11T06:12:44.000Z'), null);
+
+      const result = await service.contributions(10);
+
+      expect(result.lastContributedAt).toBe('2026-09-11T06:12:44.000Z');
+    });
+
+    it('404s a faculty member who is gone, without counting anything', async () => {
+      qb.getOne.mockResolvedValue(null);
+
+      await expect(service.contributions(10)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(repos.get(Question).countBy).not.toHaveBeenCalled();
+    });
   });
 
   it('provides dropdown labels matching the staff screen', async () => {

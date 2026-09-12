@@ -10,6 +10,8 @@ import { Faculty } from './entities/faculty.entity';
 import { User } from '../users/entities/user.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { Batch } from '../batches/entities/batch.entity';
+import { Question } from '../questions/entities/question.entity';
+import { Content } from '../content/entities/content.entity';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { Role } from '../common/enums/role.enum';
@@ -96,6 +98,77 @@ export class FacultyService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * What one faculty member has authored.
+   *
+   * Both halves key off `faculty.userId`, not `faculty.id`: the audit
+   * columns on `questions` and `content` record the *account* that wrote the
+   * row, and a faculty record is a separate thing hanging off that account.
+   *
+   * Questions are hard-deleted (`DELETE /questions/:id`), so every row that
+   * survives is a real contribution and `isActive` is the only split worth
+   * drawing. Content is soft-deleted, so a deleted item drops out of the
+   * count entirely - a contribution someone withdrew is not a contribution.
+   */
+  async contributions(id: number, manager = this.dataSource.manager) {
+    // Through the same builder findOne() uses, so a soft-deleted faculty
+    // member, or one whose account is no longer staff, 404s identically.
+    const faculty = await this.query(manager)
+      .andWhere('faculty.id = :id', { id })
+      .getOne();
+    if (!faculty) throw new NotFoundException('Faculty member not found');
+
+    const authorId = faculty.userId;
+    const questions = manager.getRepository(Question);
+    const content = manager.getRepository(Content);
+
+    const lastAuthoredIn = async (
+      repository: typeof questions | typeof content,
+      alias: string,
+    ): Promise<Date | null> => {
+      const row = await repository
+        .createQueryBuilder(alias)
+        .select(`MAX(${alias}.createdAt)`, 'lastAt')
+        .where(`${alias}.createdBy = :authorId`, { authorId })
+        .getRawOne<{ lastAt: Date | null }>();
+      return row?.lastAt ?? null;
+    };
+
+    const [
+      questionsTotal,
+      questionsActive,
+      contentTotal,
+      contentPublished,
+      lastQuestionAt,
+      lastContentAt,
+    ] = await Promise.all([
+      questions.countBy({ createdBy: authorId }),
+      questions.countBy({ createdBy: authorId, isActive: true }),
+      content.countBy({ createdBy: authorId }),
+      content.countBy({ createdBy: authorId, isPublished: true }),
+      lastAuthoredIn(questions, 'question'),
+      lastAuthoredIn(content, 'content'),
+    ]);
+
+    const lastContributedAt =
+      [lastQuestionAt, lastContentAt]
+        .filter((date): date is Date => date != null)
+        .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+
+    return {
+      facultyId: faculty.id,
+      userId: authorId,
+      questions: { total: questionsTotal, active: questionsActive },
+      content: { total: contentTotal, published: contentPublished },
+      // An ISO timestamp rather than a date: the audit columns are
+      // timestamptz, and rendering a day means choosing a timezone, which is
+      // the client's decision and not one to bake in here.
+      lastContributedAt: lastContributedAt
+        ? lastContributedAt.toISOString()
+        : null,
     };
   }
 
@@ -214,21 +287,17 @@ export class FacultyService {
     return this.dataSource.transaction(async (manager) => {
       const { record, user } = await this.lockRecord(manager, id);
       const deletedAt = new Date();
-      await manager
-        .getRepository(Faculty)
-        .update(record.id, {
-          deletedAt,
-          deletedBy: actorId,
-          updatedBy: actorId,
-        });
-      await manager
-        .getRepository(User)
-        .update(user.id, {
-          deletedAt,
-          deletedBy: actorId,
-          updatedBy: actorId,
-          isActive: false,
-        });
+      await manager.getRepository(Faculty).update(record.id, {
+        deletedAt,
+        deletedBy: actorId,
+        updatedBy: actorId,
+      });
+      await manager.getRepository(User).update(user.id, {
+        deletedAt,
+        deletedBy: actorId,
+        updatedBy: actorId,
+        isActive: false,
+      });
       await this.revokeSessions(manager, user.id);
       await manager
         .getRepository(PasswordResetToken)

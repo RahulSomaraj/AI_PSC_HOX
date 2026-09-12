@@ -13,6 +13,26 @@ Unless noted, every endpoint needs `Authorization: Bearer <jwt>`.
 > it is not registered and the bare object is returned. The bodies below are
 > the bare object.
 
+> **⚠️ Open — dates come back in two shapes, and nothing states the rule.**
+> Some endpoints return a **day string**: `lastActiveOn: "2026-09-10"`
+> (`/reports/student-performance`), `date: "2026-09-09"` (the dashboard
+> series). Others return a **full ISO timestamp**: `lastContributedAt`
+> (`/faculty/:id/contributions`), `createdAt` (notifications, content).
+>
+> There is a defensible rule hiding in that — *anything bucketed into a day
+> is a day string; anything that is one row's moment is ISO* — and both
+> halves currently follow it. But it is implicit, so the next endpoint is a
+> coin flip, and a client rendering one panel already has to handle both.
+>
+> **Anaswar4 → Voyager211:** can we write that rule down, or unify on ISO and
+> let the client bucket? `lastContributedAt` is the newest of these and the
+> cheapest to change; say the word and it becomes a day string. The one thing
+> that should not happen is a third endpoint guessing.
+>
+> Day strings also carry a timezone choice — the dashboard buckets by
+> `ACTIVITY_TIMEZONE` (default `Asia/Kolkata`). ISO timestamps do not, which
+> is the reason `lastContributedAt` is one.
+
 ---
 
 ## Uploads

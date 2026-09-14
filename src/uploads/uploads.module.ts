@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 
@@ -8,8 +9,12 @@ import { UploadsService } from './uploads.service';
  *
  * Exported so the Content Library module can sign URLs without going back
  * out over HTTP.
+ *
+ * ConfigModule is imported explicitly because ConfigModule.forRoot() in
+ * AppModule is not registered as global.
  */
 @Module({
+  imports: [ConfigModule],
   controllers: [UploadsController],
   providers: [UploadsService],
   exports: [UploadsService],

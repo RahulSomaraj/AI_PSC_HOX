@@ -19,13 +19,16 @@ import { ExamAnalyticsDto } from './dto/exam-analytics.dto';
 import { GrowthEngagementService } from './growth-engagement.service';
 import { GrowthEngagementDto } from './dto/growth-engagement.dto';
 import { GrowthQueryDto } from './dto/growth-query.dto';
+import { ContentUsageService } from './content-usage.service';
+import { ContentUsageQueryDto } from './dto/content-usage-query.dto';
+import { ContentUsageDto } from './dto/content-usage.dto';
 
 /**
  * The Reports screen: one endpoint per tab.
  *
- * Student Performance, Exam Analytics, Content Usage and Growth & Engagement.
- * Content Usage is absent - nothing records who opens a piece of content, so
- * there is nothing to aggregate yet. See API_CONTRACT.md.
+ * Student Performance, Exam Analytics, Content Usage and Growth & Engagement,
+ * one endpoint each. All four are read-only aggregates over tables another
+ * module writes: answer_log, exams, content_view and user_activity.
  */
 @ApiTags('reports', 'admin')
 @ApiBearerAuth('JWT-auth')
@@ -40,6 +43,7 @@ export class ReportsController {
     private readonly studentPerformanceService: StudentPerformanceService,
     private readonly examAnalyticsService: ExamAnalyticsService,
     private readonly growthEngagementService: GrowthEngagementService,
+    private readonly contentUsageService: ContentUsageService,
   ) {}
 
   @Get('student-performance')
@@ -86,5 +90,21 @@ export class ReportsController {
     @Query() query: GrowthQueryDto,
   ): Promise<GrowthEngagementDto> {
     return this.growthEngagementService.report(query.days ?? 30);
+  }
+
+  @Get('content-usage')
+  @ApiOperation({
+    summary: 'Content Usage tab (Admin only)',
+    description:
+      'What students are reading: totals, a daily series, breakdowns by ' +
+      'subject and by batch, and the most-opened items. Staff opens are ' +
+      'not counted and repeat opens are not deduplicated - both are ' +
+      'decided at the write site. Rows exist from 2026-09-12 only.',
+  })
+  @ApiResponse({ status: 200, type: ContentUsageDto })
+  contentUsage(
+    @Query() query: ContentUsageQueryDto,
+  ): Promise<ContentUsageDto> {
+    return this.contentUsageService.report(query);
   }
 }

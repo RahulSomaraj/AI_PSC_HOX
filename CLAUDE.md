@@ -329,3 +329,49 @@ faculty-facing screen.
 - **`jest.config.js` has a typo:** `moduleNameMapping` should be
   `moduleNameMapper`, so the `src/` path alias silently does not work. Use
   relative imports.
+
+---
+
+## 7. Final steps before deployment
+
+Local development leans on conveniences that are wrong — sometimes dangerously
+wrong — on a deployed box. Work through this list before the first deploy,
+and again before any deploy that touches real data.
+
+**Credentials in `.env` are per-developer and are not trustworthy as a
+template.** A `.env` copied from a teammate carries *their* local database
+password and *their* signing secret. Locally that often goes unnoticed,
+because a developer's `pg_hba.conf` may have `trust` on `127.0.0.1`, in which
+case Postgres never checks the password at all and a wrong value works
+anyway. Nothing on a server is forgiving like that.
+
+- **`DB_PASSWORD` must be a real credential**, verified against the target
+  database, not inherited from another machine.
+- **`DB_HOST` must not be `127.0.0.1`.** Pointing at IPv4 loopback is a local
+  workaround for the `trust`/`scram-sha-256` split between `127.0.0.1` and
+  `::1`; on a server it either fails or reaches the wrong host.
+- **`DB_SSL`** is on unless the value is the literal string `false`. Managed
+  Postgres with `rds.force_ssl=1` needs it on — check it is not left at the
+  local `false`.
+
+**Regenerate `JWT_SECRET` for every environment.** Developers share `.env`
+files, so a dev secret is effectively public within the team: anyone holding
+it can mint tokens the API will accept. Each environment gets its own value,
+generated fresh and never copied from a developer's machine:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+**Set `synchronize: false` and ship a baseline migration.** See D4 in §5 —
+this is the one item on this list that can destroy data rather than merely
+block a boot.
+
+**Confirm `NODE_ENV=production`.** It changes the response shape: `main.ts`
+registers the response interceptor only outside production, so dev returns
+`{ status, message, data }` and production returns the bare object. The
+frontend has to be built against whichever one it will actually receive.
+
+**Check the storage variables.** `S3_BUCKET` empty means `POST /uploads`
+answers 503 while the rest of the API boots — fine for a developer without a
+bucket, invisible until someone tries to upload in production.

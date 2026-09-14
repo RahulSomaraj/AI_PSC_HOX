@@ -508,7 +508,7 @@ Completed attempts only — a pending or expired one has no score to rank.
 |---|---|
 | Student Performance | `GET /reports/student-performance` |
 | Exam Analytics | `GET /reports/exam-analytics` |
-| Content Usage | ⛔ **not built** — see the end of this section |
+| Content Usage | `GET /reports/content-usage` |
 | Growth & Engagement | `GET /reports/growth-engagement` |
 
 ### `GET /reports/student-performance`
@@ -658,31 +658,95 @@ window.
 > earlier than that report zero because nothing was recorded, not because
 > nobody came. Read a long window with that in mind.
 
-### ⛔ Content Usage — not built
+### `GET /reports/content-usage`
 
-**Nothing records who opens a piece of content.** `content` has no view or
-download counter and there is no event table anywhere, so there is nothing to
-aggregate. This is the same shape of gap the answer log filled for questions.
+What students are actually reading.
 
-Making it work needs, in order:
+| Query | Notes |
+|---|---|
+| `days` | 1–365, default 30. |
+| `subjectId` | Only views of items filed under this subject **at the time they were read**. |
+| `batchId` | Only views by readers who were in this batch **at the time they read**. |
+| `page` / `limit` | For `items` only; 1-based, default 1; 1–100, default 25. |
 
-1. A `content_view` table — one row per open, carrying `content_id`,
-   `user_id` and a timestamp, the way `answer_log` carries one row per answer.
-2. A write on the content read path, in the module that owns it.
-3. Then the tab itself: views per item, per subject, per batch, over time.
+**Response `200`**
 
-> **1 and 2 shipped on 2026-09-12.** `content_view` exists and
-> `GET /content/:id` writes to it. `subject_id` and `batch_id` are
-> denormalised at write time so all three groupings in step 3 aggregate
-> without joining `content` — see **Content Library → View tracking** for the
-> column list and for what is deliberately *not* counted. Step 3 is still
-> open, and rows only accumulate from the date above.
+```json
+{
+  "summary": {
+    "totalViews": 4820,
+    "distinctViewers": 412,
+    "itemsViewed": 148,
+    "averageDailyViews": 160.7
+  },
+  "series": [
+    { "date": "2026-09-13", "views": 163 }
+  ],
+  "bySubject": [
+    {
+      "subjectId": 12,
+      "subjectName": "Indian Polity",
+      "views": 1840,
+      "distinctViewers": 268
+    }
+  ],
+  "byBatch": [
+    {
+      "batchId": 3,
+      "batchName": "LDC Evening 2026",
+      "views": 962,
+      "distinctViewers": 74
+    }
+  ],
+  "items": [
+    {
+      "contentId": 91,
+      "title": "Indian Polity - Fundamental Rights notes",
+      "type": "pdf",
+      "subjectId": 12,
+      "subjectName": "Indian Polity",
+      "views": 340,
+      "distinctViewers": 212,
+      "lastViewedAt": "2026-09-13T09:11:00.000Z"
+    }
+  ],
+  "total": 148, "page": 1, "limit": 25, "totalPages": 6
+}
+```
 
-**There is nothing to backfill from.** Unlike exam answers, which could be
-reconstructed from `exams.answers`, a content view leaves no trace anywhere —
-every day without the write path is a day of usage data that cannot be
-recovered. Content shipped recently, so almost nothing has been lost yet, but
-that stops being true quickly.
+`series` is oldest first and gap-filled, bucketed by `ACTIVITY_TIMEZONE` — the
+same day boundary as `/dashboard/dau` and `/reports/growth-engagement`, so all
+three overlay. `averageDailyViews` divides by every day in the window,
+including silent ones.
+
+`bySubject` and `byBatch` return the **top 20 by views** and are not paginated;
+they are read as a chart legend. Only `items` pages, and `total` counts
+distinct items opened in the window.
+
+**`views` and `distinctViewers` are different questions.** 340 opens by 212
+students means the item is being re-read. Both are reported everywhere rather
+than making the client guess which one a number is.
+
+**Nulls are buckets, not missing data:**
+
+| Null | Means |
+|---|---|
+| `subjectId: null` | The item carried no subject when it was read — the untagged bucket. |
+| `subjectName: null` with a `subjectId` | The subject row is gone. `subject_id` is denormalised and carries no foreign key, so the reading still reports. |
+| `batchId: null` | The reader was in no batch at the time. |
+
+**Soft-deleted items still appear**, with their title. They were read, and
+retiring an item afterwards does not unmake that.
+
+> **Three things that shape every number here**, all decided at the write site
+> rather than in this endpoint — see **Content Library → view tracking**:
+> staff opens are not recorded; there is no dedup window, so reopening an item
+> three times is three views; and a failed write is swallowed, so a view can
+> be missing but a read never fails because of one.
+
+> **Rows exist from 2026-09-12 only.** Earlier days in a long window report
+> zero because nothing was recorded, not because nothing was read, and there
+> is nothing to backfill from. Read a 365-day window with that in mind.
 
 ---
 

@@ -17,6 +17,7 @@ import { DashboardSummaryDto } from './dto/dashboard-summary.dto';
 import { RecentQuestionDto } from './dto/recent-question.dto';
 import { DailyAttemptCountDto } from './dto/daily-attempt-count.dto';
 import { DashboardSeriesDto } from './dto/dashboard-series.dto';
+import { UpcomingExamDto } from './dto/upcoming-exam.dto';
 import { ActivityService } from '../activity/activity.service';
 
 /**
@@ -180,6 +181,23 @@ export class DashboardService {
       );
       throw new InternalServerErrorException('Failed to load exam attempts');
     }
+  }
+
+  /**
+   * The Upcoming Exams table. **Always empty for now.**
+   *
+   * Nothing in the catalogue carries a date - `exam_posts` and `exam_stages`
+   * have no schedule column, and nothing else in the API schedules an exam
+   * (decision D1 in CLAUDE.md). With no date there is no "upcoming", and
+   * inventing one from creation times or attempt history would put exams on
+   * the dashboard that nobody scheduled.
+   *
+   * The route exists so the console's table renders its empty state instead
+   * of an error. Once D1 settles where a schedule lives, this is the one
+   * method to fill in; the response shape will not change.
+   */
+  async upcomingExams(_limit: number): Promise<UpcomingExamDto[]> {
+    return [];
   }
 
   /**

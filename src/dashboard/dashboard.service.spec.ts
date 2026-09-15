@@ -326,4 +326,12 @@ describe('DashboardService', () => {
       );
     });
   });
+
+  describe('upcomingExams', () => {
+    it('is empty until something can schedule an exam', async () => {
+      const { service } = build();
+
+      await expect(service.upcomingExams(5)).resolves.toEqual([]);
+    });
+  });
 });

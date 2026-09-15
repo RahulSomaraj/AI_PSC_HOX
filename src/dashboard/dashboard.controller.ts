@@ -16,14 +16,17 @@ import { RecentQuestionsQueryDto } from './dto/recent-questions-query.dto';
 import { DashboardSummaryDto } from './dto/dashboard-summary.dto';
 import { RecentQuestionDto } from './dto/recent-question.dto';
 import { DashboardSeriesDto } from './dto/dashboard-series.dto';
+import {
+  UpcomingExamDto,
+  UpcomingExamsQueryDto,
+} from './dto/upcoming-exam.dto';
 
 /**
  * Admin dashboard reads.
  *
  * `GET /dashboard` itself lives on AppController and still returns
  * enrollment stats; this controller only adds named sub-routes, so the two
- * do not collide. `GET /dashboard/upcoming-exams` is deliberately absent -
- * nothing in the catalogue carries a date yet (decision D1 in CLAUDE.md).
+ * do not collide.
  */
 @ApiTags('dashboard', 'admin')
 @ApiBearerAuth('JWT-auth')
@@ -60,6 +63,19 @@ export class DashboardController {
     @Query() query: RecentQuestionsQueryDto,
   ): Promise<RecentQuestionDto[]> {
     return this.dashboardService.recentQuestions(query.limit ?? 5);
+  }
+
+  @Get('upcoming-exams')
+  @ApiOperation({
+    summary: 'Upcoming exams (Admin only)',
+    description:
+      'Always an empty list for now: nothing in the catalogue carries a date to be upcoming by (decision D1).',
+  })
+  @ApiResponse({ status: 200, type: [UpcomingExamDto] })
+  upcomingExams(
+    @Query() query: UpcomingExamsQueryDto,
+  ): Promise<UpcomingExamDto[]> {
+    return this.dashboardService.upcomingExams(query.limit ?? 5);
   }
 
   @Get('exam-attempts')

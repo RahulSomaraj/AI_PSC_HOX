@@ -253,12 +253,37 @@ two charts share a day boundary and can be overlaid.
 console type: weekday labels repeat once a window passes seven days, and
 `date` does not.
 
-### Not built
+### `GET /dashboard/upcoming-exams`
 
-`GET /dashboard/upcoming-exams` — nothing in the catalogue carries a date, so
-there is no schedule to read. Blocked on decision **D1** in `CLAUDE.md` §5.
-The "Today's Exams" tile has no source until that is settled — which is why
-`todaysExams` above is a fixed `0`.
+The Upcoming Exams table. **Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `limit` | 1–50, default 5. |
+
+**Response `200` — always `[]` for now.** Each row, once there are any, has the
+console's `UpcomingExam` shape:
+
+```json
+{
+  "id": 12,
+  "exam": "LDC Preliminary",
+  "date": "2025-11-21T00:00:00.000Z",
+  "level": "LDC (10th Level)",
+  "batch": "Batch A"
+}
+```
+
+> **Why it is empty.** Nothing in the catalogue carries a date — `exam_posts`
+> and `exam_stages` have no schedule column, and nothing else in the API
+> schedules an exam. That is decision **D1** in `CLAUDE.md` §5. With no date
+> there is no "upcoming", and inventing one from creation times would put
+> exams on the dashboard that nobody scheduled.
+>
+> The route exists so the table shows its empty state instead of failing.
+> When D1 settles where a schedule lives, only the query behind this route
+> changes — the shape above does not. The "Today's Exams" tile's fixed `0`
+> has the same cause.
 
 ---
 

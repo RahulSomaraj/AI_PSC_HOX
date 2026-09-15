@@ -25,6 +25,7 @@ import { Batch } from '../batches/entities/batch.entity';
 import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
 import { ContentStatus } from '../content/content-type.enum';
+import { QuestionStatus } from '../questions/question-fields.enum';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { FacultyRole } from './faculty-role.enum';
@@ -409,49 +410,58 @@ describe('FacultyService', () => {
   });
 
   describe('contributions', () => {
-    /** The six reads, in the order `contributions` issues them. */
-    const authored = (
-      questionsTotal: number,
-      questionsActive: number,
-      contentTotal: number,
-      contentPublished: number,
-      lastQuestionAt: Date | null,
-      lastContentAt: Date | null,
-    ) => {
+    /**
+     * Seeds the reads `contributions` issues, in order: four counts, the
+     * difficulty average, then the recent questions and content.
+     */
+    const authored = ({
+      questionsCreated = 0,
+      questionsPublished = 0,
+      contentUploads = 0,
+      contentPublished = 0,
+      averageDifficulty = null as string | null,
+      recentQuestions = [] as unknown[],
+      recentContent = [] as unknown[],
+    } = {}) => {
       repos
         .get(Question)
-        .countBy.mockResolvedValueOnce(questionsTotal)
-        .mockResolvedValueOnce(questionsActive);
+        .countBy.mockResolvedValueOnce(questionsCreated)
+        .mockResolvedValueOnce(questionsPublished);
       repos
         .get(Content)
-        .countBy.mockResolvedValueOnce(contentTotal)
+        .countBy.mockResolvedValueOnce(contentUploads)
         .mockResolvedValueOnce(contentPublished);
-      qb.getRawOne
-        .mockResolvedValueOnce({ lastAt: lastQuestionAt })
-        .mockResolvedValueOnce({ lastAt: lastContentAt });
+      qb.getRawOne.mockResolvedValueOnce({ average: averageDifficulty });
+      repos.get(Question).find.mockResolvedValueOnce(recentQuestions);
+      repos.get(Content).find.mockResolvedValueOnce(recentContent);
     };
 
-    it('counts both halves and reports the latest authorship', async () => {
-      authored(
-        143,
-        140,
-        12,
-        9,
-        new Date('2026-09-01T00:00:00.000Z'),
-        new Date('2026-09-11T06:12:44.000Z'),
-      );
+    it("answers in the console's FacultyContributions shape", async () => {
+      authored({
+        questionsCreated: 40,
+        questionsPublished: 36,
+        contentUploads: 10,
+        contentPublished: 9,
+        averageDifficulty: '3.6',
+      });
 
-      expect(await service.contributions(10)).toEqual({
+      const result = await service.contributions(10);
+
+      expect(result).toEqual({
         facultyId: 10,
         userId: 20,
-        questions: { total: 143, active: 140 },
-        content: { total: 12, published: 9 },
-        lastContributedAt: '2026-09-11T06:12:44.000Z',
+        stats: {
+          questionsCreated: 40,
+          contentUploads: 10,
+          avgDifficulty: 7.2,
+          approvalRate: 90,
+        },
+        recent: [],
       });
     });
 
     it('keys off the staff account, not the faculty row id', async () => {
-      authored(0, 0, 0, 0, null, null);
+      authored();
 
       await service.contributions(10);
 
@@ -464,51 +474,134 @@ describe('FacultyService', () => {
       });
     });
 
-    it('splits retired questions and unpublished content out of the totals', async () => {
-      authored(143, 140, 12, 9, null, null);
+    describe('avgDifficulty', () => {
+      it('doubles the 1-5 average onto the 10-point scale the tile prints', async () => {
+        authored({ questionsCreated: 3, averageDifficulty: '2.3333' });
 
-      await service.contributions(10);
-
-      expect(repos.get(Question).countBy).toHaveBeenCalledWith({
-        createdBy: 20,
-        isActive: true,
+        expect((await service.contributions(10)).stats.avgDifficulty).toBe(4.7);
       });
-      expect(repos.get(Content).countBy).toHaveBeenCalledWith({
-        createdBy: 20,
-        status: ContentStatus.Published,
+
+      it('is 0 for someone with no questions, not NaN', async () => {
+        authored({ averageDifficulty: null });
+
+        expect((await service.contributions(10)).stats.avgDifficulty).toBe(0);
       });
     });
 
-    it('takes the later of the two dates when questions came last', async () => {
-      authored(
-        1,
-        1,
-        1,
-        1,
-        new Date('2026-09-11T06:12:44.000Z'),
-        new Date('2026-09-01T00:00:00.000Z'),
-      );
+    describe('approvalRate', () => {
+      it('counts published over everything authored, both kinds together', async () => {
+        authored({
+          questionsCreated: 3,
+          questionsPublished: 1,
+          contentUploads: 1,
+          contentPublished: 1,
+        });
 
-      const result = await service.contributions(10);
+        // 2 published of 4 authored.
+        expect((await service.contributions(10)).stats.approvalRate).toBe(50);
+      });
 
-      expect(result.lastContributedAt).toBe('2026-09-11T06:12:44.000Z');
+      it('asks for published questions and published content', async () => {
+        authored();
+
+        await service.contributions(10);
+
+        expect(repos.get(Question).countBy).toHaveBeenCalledWith({
+          createdBy: 20,
+          status: QuestionStatus.Published,
+        });
+        expect(repos.get(Content).countBy).toHaveBeenCalledWith({
+          createdBy: 20,
+          status: ContentStatus.Published,
+        });
+      });
+
+      it('is 0 for someone who has authored nothing, not NaN', async () => {
+        authored();
+
+        expect((await service.contributions(10)).stats.approvalRate).toBe(0);
+      });
     });
 
-    it('reports null for someone who has authored nothing', async () => {
-      authored(0, 0, 0, 0, null, null);
+    describe('recent', () => {
+      it('merges both kinds newest first and cuts to the limit', async () => {
+        authored({
+          recentQuestions: [
+            {
+              id: 5,
+              question: '<p>Newest question</p>',
+              status: QuestionStatus.Published,
+              createdAt: new Date('2026-09-15T10:00:00.000Z'),
+            },
+            {
+              id: 4,
+              question: '<p>Oldest question</p>',
+              status: QuestionStatus.Draft,
+              createdAt: new Date('2026-09-01T10:00:00.000Z'),
+            },
+          ],
+          recentContent: [
+            {
+              id: 9,
+              title: 'Middle content',
+              status: ContentStatus.Draft,
+              createdAt: new Date('2026-09-10T10:00:00.000Z'),
+            },
+          ],
+        });
 
-      const result = await service.contributions(10);
+        const { recent } = await service.contributions(10, 2);
 
-      expect(result.lastContributedAt).toBeNull();
-      expect(result.questions).toEqual({ total: 0, active: 0 });
-    });
+        expect(recent).toEqual([
+          {
+            id: 5,
+            title: 'Newest question',
+            type: 'question',
+            date: '2026-09-15T10:00:00.000Z',
+            status: 'approved',
+          },
+          {
+            id: 9,
+            title: 'Middle content',
+            type: 'content',
+            date: '2026-09-10T10:00:00.000Z',
+            status: 'pending',
+          },
+        ]);
+      });
 
-    it('still dates the contribution when only one side has any', async () => {
-      authored(4, 4, 0, 0, new Date('2026-09-11T06:12:44.000Z'), null);
+      it('fetches no more than the limit of each kind', async () => {
+        authored();
 
-      const result = await service.contributions(10);
+        await service.contributions(10, 3);
 
-      expect(result.lastContributedAt).toBe('2026-09-11T06:12:44.000Z');
+        expect(repos.get(Question).find).toHaveBeenCalledWith(
+          expect.objectContaining({ take: 3 }),
+        );
+        expect(repos.get(Content).find).toHaveBeenCalledWith(
+          expect.objectContaining({ take: 3 }),
+        );
+      });
+
+      it('reduces question HTML to plain words', async () => {
+        authored({
+          recentQuestions: [
+            {
+              id: 1,
+              question:
+                '<p>Which <strong>article</strong> covers&nbsp;equality &amp; liberty?</p>',
+              status: QuestionStatus.PendingReview,
+              createdAt: new Date('2026-09-15T10:00:00.000Z'),
+            },
+          ],
+        });
+
+        const [item] = (await service.contributions(10)).recent;
+
+        expect(item.title).toBe('Which article covers equality & liberty?');
+        // pending-review is not yet approved.
+        expect(item.status).toBe('pending');
+      });
     });
 
     it('404s a faculty member who is gone, without counting anything', async () => {

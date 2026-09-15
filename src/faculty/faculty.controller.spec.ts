@@ -186,9 +186,30 @@ describe('Faculty HTTP contract', () => {
       .set('Authorization', 'Bearer admin')
       .expect(200);
 
-    expect(service.contributions).toHaveBeenCalledWith(7);
+    expect(service.contributions).toHaveBeenCalledWith(7, 5);
     expect(service.findOne).not.toHaveBeenCalled();
   });
+
+  it('passes the recent-items limit the console sends', async () => {
+    await request(app.getHttpServer())
+      .get('/faculty/7/contributions?limit=10')
+      .set('Authorization', 'Bearer admin')
+      .expect(200);
+
+    expect(service.contributions).toHaveBeenCalledWith(7, 10);
+  });
+
+  it.each(['0', '51', 'many'])(
+    'rejects a contributions limit of %s',
+    async (limit) => {
+      await request(app.getHttpServer())
+        .get(`/faculty/7/contributions?limit=${limit}`)
+        .set('Authorization', 'Bearer admin')
+        .expect(400);
+
+      expect(service.contributions).not.toHaveBeenCalled();
+    },
+  );
 
   it('routes options before the numeric ID route', async () => {
     await request(app.getHttpServer())

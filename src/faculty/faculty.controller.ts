@@ -28,7 +28,10 @@ import { CreateFacultyDto } from './dto/create-faculty.dto';
 import { UpdateFacultyDto } from './dto/update-faculty.dto';
 import { FindFacultyQueryDto } from './dto/find-faculty-query.dto';
 import { FacultyStatusDto } from './dto/faculty-status.dto';
-import { FacultyContributionsDto } from './dto/faculty-contributions.dto';
+import {
+  FacultyContributionsDto,
+  FacultyContributionsQueryDto,
+} from './dto/faculty-contributions.dto';
 
 @ApiTags('faculty', 'admin')
 @ApiBearerAuth('JWT-auth')
@@ -78,16 +81,17 @@ export class FacultyController {
 
   @Get(':id/contributions')
   @ApiOperation({
-    summary: 'Count what a faculty member has authored',
+    summary: 'What a faculty member has authored',
     description:
-      'Questions and content library items written by their staff account.',
+      'Four stat tiles and the most recent questions and content items written by their staff account.',
   })
   @ApiResponse({ status: 200, type: FacultyContributionsDto })
   @ApiResponse({ status: 404, description: 'Faculty member not found' })
   contributions(
     @Param('id', ParseIntPipe) id: number,
+    @Query() query: FacultyContributionsQueryDto,
   ): Promise<FacultyContributionsDto> {
-    return this.facultyService.contributions(id);
+    return this.facultyService.contributions(id, query.limit ?? 5);
   }
 
   @Patch(':id/status')

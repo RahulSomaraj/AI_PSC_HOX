@@ -13,6 +13,7 @@ import { Batch } from '../batches/entities/batch.entity';
 import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
 import { ContentStatus } from '../content/content-type.enum';
+import { QuestionStatus } from '../questions/question-fields.enum';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { Role } from '../common/enums/role.enum';
@@ -103,18 +104,23 @@ export class FacultyService {
   }
 
   /**
-   * What one faculty member has authored.
+   * What one faculty member has authored, in the console's
+   * FacultyContributions shape: four stat tiles and a recent-items table.
    *
    * Both halves key off `faculty.userId`, not `faculty.id`: the audit
    * columns on `questions` and `content` record the *account* that wrote the
    * row, and a faculty record is a separate thing hanging off that account.
    *
    * Questions are hard-deleted (`DELETE /questions/:id`), so every row that
-   * survives is a real contribution and `isActive` is the only split worth
-   * drawing. Content is soft-deleted, so a deleted item drops out of the
-   * count entirely - a contribution someone withdrew is not a contribution.
+   * survives is a real contribution - a retired one included. Content is
+   * soft-deleted, so a deleted item drops out entirely: a contribution
+   * someone withdrew is not a contribution.
    */
-  async contributions(id: number, manager = this.dataSource.manager) {
+  async contributions(
+    id: number,
+    limit = 5,
+    manager = this.dataSource.manager,
+  ) {
     // Through the same builder findOne() uses, so a soft-deleted faculty
     // member, or one whose account is no longer staff, 404s identically.
     const faculty = await this.query(manager)
@@ -126,51 +132,113 @@ export class FacultyService {
     const questions = manager.getRepository(Question);
     const content = manager.getRepository(Content);
 
-    const lastAuthoredIn = async (
-      repository: typeof questions | typeof content,
-      alias: string,
-    ): Promise<Date | null> => {
-      const row = await repository
-        .createQueryBuilder(alias)
-        .select(`MAX(${alias}.createdAt)`, 'lastAt')
-        .where(`${alias}.createdBy = :authorId`, { authorId })
-        .getRawOne<{ lastAt: Date | null }>();
-      return row?.lastAt ?? null;
-    };
-
     const [
-      questionsTotal,
-      questionsActive,
-      contentTotal,
+      questionsCreated,
+      questionsPublished,
+      contentUploads,
       contentPublished,
-      lastQuestionAt,
-      lastContentAt,
+      difficulty,
+      recentQuestions,
+      recentContent,
     ] = await Promise.all([
       questions.countBy({ createdBy: authorId }),
-      questions.countBy({ createdBy: authorId, isActive: true }),
+      questions.countBy({
+        createdBy: authorId,
+        status: QuestionStatus.Published,
+      }),
       content.countBy({ createdBy: authorId }),
       content.countBy({ createdBy: authorId, status: ContentStatus.Published }),
-      lastAuthoredIn(questions, 'question'),
-      lastAuthoredIn(content, 'content'),
+      questions
+        .createQueryBuilder('question')
+        .select('AVG(question.difficulty)', 'average')
+        .where('question.createdBy = :authorId', { authorId })
+        .getRawOne<{ average: string | null }>(),
+      // Each side is capped at `limit` before the merge: the newest `limit`
+      // items overall are always among the newest `limit` of each kind.
+      questions.find({
+        where: { createdBy: authorId },
+        select: { id: true, question: true, status: true, createdAt: true },
+        order: { createdAt: 'DESC', id: 'DESC' },
+        take: limit,
+      }),
+      content.find({
+        where: { createdBy: authorId },
+        select: { id: true, title: true, status: true, createdAt: true },
+        order: { createdAt: 'DESC', id: 'DESC' },
+        take: limit,
+      }),
     ]);
 
-    const lastContributedAt =
-      [lastQuestionAt, lastContentAt]
-        .filter((date): date is Date => date != null)
-        .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    const authored = questionsCreated + contentUploads;
+    const approved = questionsPublished + contentPublished;
+    const average =
+      difficulty?.average == null ? null : Number(difficulty.average);
+
+    const recent = [
+      ...recentQuestions.map((question) => ({
+        id: question.id,
+        title: FacultyService.plainText(question.question),
+        type: 'question' as const,
+        at: question.createdAt,
+        status:
+          question.status === QuestionStatus.Published
+            ? ('approved' as const)
+            : ('pending' as const),
+      })),
+      ...recentContent.map((item) => ({
+        id: item.id,
+        title: item.title,
+        type: 'content' as const,
+        at: item.createdAt,
+        status:
+          item.status === ContentStatus.Published
+            ? ('approved' as const)
+            : ('pending' as const),
+      })),
+    ]
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, limit)
+      .map(({ at, ...item }) => ({
+        ...item,
+        date: new Date(at).toISOString(),
+      }));
 
     return {
       facultyId: faculty.id,
       userId: authorId,
-      questions: { total: questionsTotal, active: questionsActive },
-      content: { total: contentTotal, published: contentPublished },
-      // An ISO timestamp rather than a date: the audit columns are
-      // timestamptz, and rendering a day means choosing a timezone, which is
-      // the client's decision and not one to bake in here.
-      lastContributedAt: lastContributedAt
-        ? lastContributedAt.toISOString()
-        : null,
+      stats: {
+        questionsCreated,
+        contentUploads,
+        // Stored difficulty is 1-5; the design prints this tile out of 10, so
+        // the average is doubled. Which scale is right is the console's open
+        // Q78 - this follows what the screen renders.
+        avgDifficulty: average === null ? 0 : Math.round(average * 20) / 10,
+        // Published over everything authored, questions and content together.
+        // "Approved" means published: there is no separate review step, and a
+        // draft or pending-review item has not been approved yet.
+        approvalRate:
+          authored === 0 ? 0 : Math.round((approved / authored) * 100),
+      },
+      recent,
     };
+  }
+
+  /**
+   * Question text is stored as an HTML fragment (the Question Bank's rich
+   * text). The recent-items table prints `title` as-is, so tags would show -
+   * reduce it to the words.
+   */
+  private static plainText(html: string): string {
+    return html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   async findOne(id: number, manager = this.dataSource.manager) {

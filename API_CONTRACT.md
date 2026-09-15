@@ -15,23 +15,26 @@ Unless noted, every endpoint needs `Authorization: Bearer <jwt>`.
 
 > **⚠️ Open — dates come back in two shapes, and nothing states the rule.**
 > Some endpoints return a **day string**: `lastActiveOn: "2026-09-10"`
-> (`/reports/student-performance`), `date: "2026-09-09"` (the dashboard
-> series). Others return a **full ISO timestamp**: `lastContributedAt`
-> (`/faculty/:id/contributions`), `createdAt` (notifications, content).
+> (`/reports/student-performance`), `points[].date` (the dashboard charts),
+> `uploadedAt` (content). Others return a **full ISO timestamp**: `addedOn`
+> (`/dashboard/recent-questions`), `recent[].date`
+> (`/faculty/:id/contributions`), `viewedAt` (`/users/:id/recent-content`),
+> `createdAt` (notifications, content).
 >
-> There is a defensible rule hiding in that — *anything bucketed into a day
-> is a day string; anything that is one row's moment is ISO* — and both
-> halves currently follow it. But it is implicit, so the next endpoint is a
-> coin flip, and a client rendering one panel already has to handle both.
+> There is a defensible rule hiding in most of that — *anything bucketed into
+> a day is a day string; anything that is one row's moment is ISO*. **But it
+> already has an exception:** content's `uploadedAt` is one row's moment sent
+> as a day, because the console's P2-5 asked for exactly that. So the rule is
+> not only implicit, it is not quite true — the next endpoint is a coin flip,
+> and a client rendering one screen already handles both.
 >
-> **Anaswar4 → Voyager211:** can we write that rule down, or unify on ISO and
-> let the client bucket? `lastContributedAt` is the newest of these and the
-> cheapest to change; say the word and it becomes a day string. The one thing
-> that should not happen is a third endpoint guessing.
+> **Anaswar4 → Voyager211:** can we write a rule down — either the one above
+> with `uploadedAt` named as the deliberate exception, or unify on ISO and let
+> the client bucket? The one thing that should not happen is a third endpoint
+> guessing.
 >
-> Day strings also carry a timezone choice — the dashboard buckets by
-> `ACTIVITY_TIMEZONE` (default `Asia/Kolkata`). ISO timestamps do not, which
-> is the reason `lastContributedAt` is one.
+> Day strings also carry a timezone choice — everything bucketed here uses
+> `ACTIVITY_TIMEZONE` (default `Asia/Kolkata`). ISO timestamps do not.
 
 ---
 
@@ -982,9 +985,15 @@ nothing to backfill from, because no earlier record of a content open exists.
 
 ### `GET /faculty/:id/contributions`
 
-What one faculty member has authored — questions, and content library items.
+What one faculty member has authored, in the console's
+`FacultyContributions` shape: the four tiles of the "Content & Questions"
+card and its recent-items table.
 
 **Roles:** `admin`
+
+| Query | Notes |
+|---|---|
+| `limit` | 1–50, default 5. How many recent items. |
 
 **Response `200`**
 
@@ -992,36 +1001,53 @@ What one faculty member has authored — questions, and content library items.
 {
   "facultyId": 10,
   "userId": 20,
-  "questions": { "total": 143, "active": 140 },
-  "content": { "total": 12, "published": 9 },
-  "lastContributedAt": "2026-09-11T06:12:44.000Z"
+  "stats": {
+    "questionsCreated": 1250,
+    "contentUploads": 82,
+    "avgDifficulty": 7.2,
+    "approvalRate": 94
+  },
+  "recent": [
+    {
+      "id": 12,
+      "title": "Fundamental Rights",
+      "type": "content",
+      "date": "2025-10-09T00:00:00.000Z",
+      "status": "approved"
+    }
+  ]
 }
 ```
 
 | Field | Notes |
 |---|---|
 | `userId` | The staff account that wrote the rows. Audit columns carry this, not `facultyId`. |
-| `questions.total` | Questions authored. |
-| `questions.active` | Of those, still in rotation (`isActive`). |
-| `content.total` | Live library items authored. |
-| `content.published` | Of those, published rather than draft. |
-| `lastContributedAt` | Latest authorship across both, or `null`. |
+| `stats.questionsCreated` | Questions authored, retired ones included. |
+| `stats.contentUploads` | Live content items authored. |
+| `stats.avgDifficulty` | **Out of 10.** Stored difficulty is 1–5 and is doubled, because the tile prints `/10`. Which scale is right is the console's open **Q78**. `0` when no questions. |
+| `stats.approvalRate` | Whole percent of authored questions **and** content that are `published`. `0` when nothing authored. |
+| `recent[]` | Newest first, questions and content merged. |
+| `recent[].id` | Unique only **with** `type` — a question and a content item can share an id. Key rows by both. |
+| `recent[].title` | Content title, or the question text reduced to plain words (it is stored as HTML). |
+| `recent[].status` | `approved` if published; `pending` for anything not yet published (draft, pending-review). |
+| `recent[].date` | ISO timestamp. |
 
-**The two halves count differently, because the two tables delete
-differently.** `DELETE /questions/:id` is a *hard* delete, so every question
-row that survives is a real contribution and `active` is the only split worth
-drawing. Content is soft-deleted, so a deleted item leaves `content.total`
-entirely — a contribution someone withdrew is not a contribution.
+**"Approved" means published.** There is no separate approval step in the API:
+a published item is the approved one, and everything short of that is pending.
+If a real review workflow is ever specified, `approvalRate` and `status` should
+read it instead.
 
-`lastContributedAt` is a full ISO timestamp, not a date. The audit columns
-are `timestamptz`, and rendering a day means choosing a timezone — which is
-the client's call, not one to bake into the response.
+**The two kinds count differently, because the two tables delete
+differently.** `DELETE /questions/:id` is a *hard* delete, so every question row
+that survives is a real contribution, a retired one included. Content is
+soft-deleted, so a deleted item leaves the counts entirely — a contribution
+someone withdrew is not a contribution.
 
 **`404`** for an unknown id, a soft-deleted faculty record, or one whose
 account is no longer staff — the same rule `GET /faculty/:id` applies.
 
-A faculty member with nothing authored is **`200` with zeroes and a null
-date**, not a 404.
+A faculty member with nothing authored is **`200` with zeroes and an empty
+`recent`**, not a 404.
 
 ### `GET /users/:id/recent-content`
 

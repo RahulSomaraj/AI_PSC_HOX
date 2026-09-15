@@ -90,16 +90,22 @@ export class StudentAnalyticsService {
       return rows.map((row) => {
         const attemptedCount = Number(row.attempted);
         const correctCount = Number(row.correct);
+        // Rounded here rather than in SQL so the percentage is derived
+        // from the same two integers the response reports.
+        const accuracy =
+          Math.round((correctCount / attemptedCount) * 1000) / 10;
         return {
           subjectId: Number(row.subjectId),
           subjectName: row.subjectName,
           attempted: attemptedCount,
           correct: correctCount,
           incorrect: attemptedCount - correctCount,
-          // Rounded here rather than in SQL so the percentage is derived
-          // from the same two integers the response reports.
-          accuracy:
-            Math.round((correctCount / attemptedCount) * 1000) / 10,
+          accuracy,
+          // The console's WeakSubject reads `name` and `percentage`. Sent
+          // beside the fuller names rather than instead of them, so the
+          // attempted/correct detail stays available to anything that wants it.
+          name: row.subjectName,
+          percentage: accuracy,
         };
       });
     } catch (error) {

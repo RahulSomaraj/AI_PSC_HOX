@@ -62,8 +62,33 @@ describe('StudentAnalyticsService', () => {
           correct: 19,
           incorrect: 29,
           accuracy: 39.6,
+          name: 'Indian Polity',
+          percentage: 39.6,
         },
       ]);
+    });
+
+    it("carries the console's WeakSubject names beside the fuller ones", async () => {
+      const { service } = build([
+        {
+          subjectId: 7,
+          subjectName: 'Geography',
+          attempted: '8',
+          correct: '7',
+        },
+      ]);
+
+      const [row] = await service.weakSubjects(1, 5, 1);
+
+      // The three fields the console's WeakSubject type reads.
+      expect({
+        subjectId: row.subjectId,
+        name: row.name,
+        percentage: row.percentage,
+      }).toEqual({ subjectId: 7, name: 'Geography', percentage: 87.5 });
+      // Same numbers under both names - they cannot drift apart.
+      expect(row.percentage).toBe(row.accuracy);
+      expect(row.name).toBe(row.subjectName);
     });
 
     it('rounds accuracy to one decimal place', async () => {

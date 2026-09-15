@@ -28,4 +28,18 @@ export class WeakSubjectDto {
     example: 39.6,
   })
   accuracy: number;
+
+  @ApiProperty({
+    description:
+      'Same as `subjectName` - the name the console’s WeakSubject type reads.',
+    example: 'Indian Polity',
+  })
+  name: string;
+
+  @ApiProperty({
+    description:
+      'Same as `accuracy`, 0-100 - the name the console’s WeakSubject type reads.',
+    example: 39.6,
+  })
+  percentage: number;
 }

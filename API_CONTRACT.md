@@ -390,10 +390,17 @@ Backs the Weak Subjects panel on the student profile.
     "attempted": 48,
     "correct": 19,
     "incorrect": 29,
-    "accuracy": 39.6
+    "accuracy": 39.6,
+    "name": "Indian Polity",
+    "percentage": 39.6
   }
 ]
 ```
+
+`name` and `percentage` are the names the console's `WeakSubject` type reads
+(`{ subjectId, name, percentage }`). They carry the same values as
+`subjectName` and `accuracy` and are sent beside them, not instead, so the
+attempted/correct detail stays available.
 
 Ordered by `accuracy` ascending, so the weakest subject is first. Ties break
 towards the subject with more answers behind it, then by `subjectId`, so the

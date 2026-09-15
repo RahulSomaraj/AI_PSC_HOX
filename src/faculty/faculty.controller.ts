@@ -32,6 +32,10 @@ import {
   FacultyContributionsDto,
   FacultyContributionsQueryDto,
 } from './dto/faculty-contributions.dto';
+import {
+  FacultyBatchDto,
+  FacultySubjectDto,
+} from './dto/faculty-profile-panels.dto';
 
 @ApiTags('faculty', 'admin')
 @ApiBearerAuth('JWT-auth')
@@ -92,6 +96,31 @@ export class FacultyController {
     @Query() query: FacultyContributionsQueryDto,
   ): Promise<FacultyContributionsDto> {
     return this.facultyService.contributions(id, query.limit ?? 5);
+  }
+
+  @Get(':id/subjects')
+  @ApiOperation({
+    summary: 'The subjects a faculty member teaches',
+    description:
+      'Each with its topic count. Empty or one entry: a faculty member holds one subject.',
+  })
+  @ApiResponse({ status: 200, type: [FacultySubjectDto] })
+  @ApiResponse({ status: 404, description: 'Faculty member not found' })
+  subjects(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<FacultySubjectDto[]> {
+    return this.facultyService.subjects(id);
+  }
+
+  @Get(':id/batches')
+  @ApiOperation({
+    summary: 'The batches a faculty member is assigned to',
+    description: 'Name-sorted, each with its exam and level, mode and size.',
+  })
+  @ApiResponse({ status: 200, type: [FacultyBatchDto] })
+  @ApiResponse({ status: 404, description: 'Faculty member not found' })
+  batches(@Param('id', ParseIntPipe) id: number): Promise<FacultyBatchDto[]> {
+    return this.facultyService.batches(id);
   }
 
   @Patch(':id/status')

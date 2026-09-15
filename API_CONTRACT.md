@@ -1073,6 +1073,45 @@ account is no longer staff — the same rule `GET /faculty/:id` applies.
 A faculty member with nothing authored is **`200` with zeroes and an empty
 `recent`**, not a 404.
 
+### `GET /faculty/:id/subjects`
+
+The profile's Subjects panel. **Roles:** `admin`
+
+```json
+[{ "subjectId": 1, "name": "Indian Polity", "topicCount": 12 }]
+```
+
+A list because the design draws several, but a faculty member holds **one**
+subject, so this is `[]` or one entry. `topicCount` counts live topics. A
+subject deleted since is dropped, as it is on the faculty row.
+
+### `GET /faculty/:id/batches`
+
+The profile's Batches Assigned panel. **Roles:** `admin`
+
+```json
+[
+  {
+    "id": 3,
+    "name": "LDC Evening 2026",
+    "examLevel": "LDC (10th Level)",
+    "mode": "online",
+    "studentCount": 42
+  }
+]
+```
+
+Name-sorted, live assignments only. **`examLevel` is `"Exam (Level)"`** — the
+exam the batch targets (its short name when it has one) and that exam's level.
+The console's column is headed "Exam Level" while its sample rows hold exam
+names, so it gets both, in the same form it asks for on the dashboard's
+Upcoming Exams. An exam or level deleted since still shows.
+
+Both routes **404** for an unknown or soft-deleted faculty member, the same
+rule as `GET /faculty/:id`. They carry more than the faculty row's own
+`subject` and `assignedBatches` — the topic count, and each batch's exam,
+mode and size.
+
 ### `GET /users/:id/recent-content`
 
 Backs the Recently Viewed Content panel on the student profile. Implements

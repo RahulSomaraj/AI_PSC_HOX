@@ -14,6 +14,7 @@ import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
 import { ContentStatus } from '../content/content-type.enum';
 import { QuestionStatus } from '../questions/question-fields.enum';
+import { Topic } from '../topics/entities/topic.entity';
 import { UserSession } from '../auth/entities/user-session.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { Role } from '../common/enums/role.enum';
@@ -110,6 +111,82 @@ export class FacultyService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  /**
+   * The subjects a faculty member teaches, for the profile's Subjects panel.
+   *
+   * A list because the console draws several; the table holds one subject per
+   * faculty member, so this is empty or has one entry. A subject that has been
+   * deleted is dropped, as it is on the faculty row itself.
+   */
+  async subjects(id: number, manager = this.dataSource.manager) {
+    const faculty = await this.liveFaculty(id, manager);
+    if (!faculty.subject) return [];
+
+    const topicCount = await manager
+      .getRepository(Topic)
+      .countBy({ subjectId: faculty.subject.id });
+
+    return [
+      {
+        subjectId: faculty.subject.id,
+        name: faculty.subject.name,
+        topicCount,
+      },
+    ];
+  }
+
+  /**
+   * The batches a faculty member is assigned to, for the profile's
+   * Batches Assigned panel. Name-sorted, like `assignedBatches` on the row.
+   */
+  async batches(id: number, manager = this.dataSource.manager) {
+    const faculty = await this.liveFaculty(id, manager);
+    const ids = (faculty.batches ?? []).map((batch) => batch.id);
+    if (ids.length === 0) return [];
+
+    // The ids are already the live assignments - query() drops deleted
+    // batches - so withDeleted() here only keeps a batch's exam and level
+    // joined if one of *those* has since been deleted, rather than blanking
+    // the column.
+    const rows = await manager.getRepository(Batch).find({
+      where: { id: In(ids) },
+      relations: { exam: { examLevel: true } },
+      withDeleted: true,
+      order: { name: 'ASC', id: 'ASC' },
+    });
+
+    return rows.map((batch) => ({
+      id: batch.id,
+      name: batch.name,
+      examLevel: FacultyService.examLabel(batch),
+      mode: batch.mode,
+      studentCount: batch.studentCount,
+    }));
+  }
+
+  /**
+   * "LDC (10th Level)" - the exam a batch targets, and the level it sits in.
+   *
+   * The console's column is headed "Exam Level" but its sample rows hold exam
+   * names, so it gets both, in the same "Exam (Level)" form the console asks
+   * for on the dashboard's Upcoming Exams.
+   */
+  private static examLabel(batch: Batch): string {
+    const exam = batch.exam?.shortName || batch.exam?.name;
+    const level = batch.exam?.examLevel?.name;
+    if (exam && level) return `${exam} (${level})`;
+    return exam ?? level ?? '';
+  }
+
+  /** A faculty member through the same builder findOne() uses, or 404. */
+  private async liveFaculty(id: number, manager: EntityManager) {
+    const faculty = await this.query(manager)
+      .andWhere('faculty.id = :id', { id })
+      .getOne();
+    if (!faculty) throw new NotFoundException('Faculty member not found');
+    return faculty;
   }
 
   /**

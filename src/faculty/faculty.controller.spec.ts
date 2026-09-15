@@ -32,6 +32,8 @@ describe('Faculty HTTP contract', () => {
     findOne: jest.fn().mockResolvedValue({ id: 1 }),
     options: jest.fn().mockResolvedValue({ roles: [] }),
     contributions: jest.fn().mockResolvedValue({ facultyId: 1 }),
+    subjects: jest.fn().mockResolvedValue([]),
+    batches: jest.fn().mockResolvedValue([]),
     update: jest.fn().mockResolvedValue({ id: 1 }),
     setStatus: jest.fn().mockResolvedValue({ id: 1, isActive: false }),
     remove: jest
@@ -101,6 +103,8 @@ describe('Faculty HTTP contract', () => {
         ['get', '/faculty/options'],
         ['get', '/faculty/1'],
         ['get', '/faculty/1/contributions'],
+        ['get', '/faculty/1/subjects'],
+        ['get', '/faculty/1/batches'],
         ['post', '/faculty'],
         ['patch', '/faculty/1'],
         ['patch', '/faculty/1/status'],
@@ -210,6 +214,19 @@ describe('Faculty HTTP contract', () => {
       expect(service.contributions).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ['subjects', '/faculty/7/subjects'],
+    ['batches', '/faculty/7/batches'],
+  ])('routes %s past the numeric ID route', async (method, path) => {
+    await request(app.getHttpServer())
+      .get(path)
+      .set('Authorization', 'Bearer admin')
+      .expect(200);
+
+    expect((service as any)[method]).toHaveBeenCalledWith(7);
+    expect(service.findOne).not.toHaveBeenCalled();
+  });
 
   it('routes options before the numeric ID route', async () => {
     await request(app.getHttpServer())

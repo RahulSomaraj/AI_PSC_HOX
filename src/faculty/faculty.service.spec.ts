@@ -13,6 +13,9 @@ jest.mock('../questions/entities/question.entity', () => ({
 jest.mock('../content/entities/content.entity', () => ({
   Content: class Content {},
 }));
+jest.mock('../topics/entities/topic.entity', () => ({
+  Topic: class Topic {},
+}));
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -24,6 +27,7 @@ import { Subject } from '../subjects/entities/subject.entity';
 import { Batch } from '../batches/entities/batch.entity';
 import { Question } from '../questions/entities/question.entity';
 import { Content } from '../content/entities/content.entity';
+import { Topic } from '../topics/entities/topic.entity';
 import { ContentStatus } from '../content/content-type.enum';
 import { QuestionStatus } from '../questions/question-fields.enum';
 import { UserSession } from '../auth/entities/user-session.entity';
@@ -111,6 +115,7 @@ describe('FacultyService', () => {
       PasswordResetToken,
       Question,
       Content,
+      Topic,
     ]) {
       repos.set(entity, {
         create: jest.fn((value) => ({ ...value })),
@@ -311,6 +316,106 @@ describe('FacultyService', () => {
       sessions.getRawMany.mockResolvedValue([]);
 
       expect((await service.findOne(10)).lastLoginAt).toBeNull();
+    });
+  });
+
+  describe('profile panels', () => {
+    describe('subjects', () => {
+      it('returns the one subject with its live topic count', async () => {
+        repos.get(Topic).countBy.mockResolvedValue(12);
+
+        expect(await service.subjects(10)).toEqual([
+          { subjectId: 1, name: 'Physics', topicCount: 12 },
+        ]);
+        expect(repos.get(Topic).countBy).toHaveBeenCalledWith({ subjectId: 1 });
+      });
+
+      it('is an empty list for a member with no subject', async () => {
+        qb.getOne.mockResolvedValue({ ...record, subject: null });
+
+        expect(await service.subjects(10)).toEqual([]);
+        expect(repos.get(Topic).countBy).not.toHaveBeenCalled();
+      });
+
+      it('404s a faculty member who is gone', async () => {
+        qb.getOne.mockResolvedValue(null);
+
+        await expect(service.subjects(10)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+      });
+    });
+
+    describe('batches', () => {
+      const withExam = (over: object = {}) => ({
+        id: 3,
+        name: 'Batch A',
+        mode: 'online',
+        studentCount: 42,
+        exam: {
+          name: 'Lower Division Clerk',
+          shortName: 'LDC',
+          examLevel: { name: '10th Level' },
+        },
+        ...over,
+      });
+
+      it("returns the console's FacultyBatch rows", async () => {
+        repos.get(Batch).find.mockResolvedValue([withExam()]);
+
+        expect(await service.batches(10)).toEqual([
+          {
+            id: 3,
+            name: 'Batch A',
+            examLevel: 'LDC (10th Level)',
+            mode: 'online',
+            studentCount: 42,
+          },
+        ]);
+      });
+
+      it('reads only the live assignments, keeping a deleted exam joined', async () => {
+        repos.get(Batch).find.mockResolvedValue([]);
+
+        await service.batches(10);
+
+        const options = repos.get(Batch).find.mock.calls[0][0];
+        // record.batches holds 3 and 4.
+        expect(options.where.id._value).toEqual([3, 4]);
+        expect(options.withDeleted).toBe(true);
+        expect(options.relations).toEqual({ exam: { examLevel: true } });
+      });
+
+      it('falls back to the full exam name when there is no short name', async () => {
+        repos.get(Batch).find.mockResolvedValue([
+          withExam({
+            exam: {
+              name: 'KAS',
+              shortName: null,
+              examLevel: { name: 'Degree' },
+            },
+          }),
+        ]);
+
+        const [batch] = await service.batches(10);
+
+        expect(batch.examLevel).toBe('KAS (Degree)');
+      });
+
+      it('is an empty list, with no query, for a member with no batches', async () => {
+        qb.getOne.mockResolvedValue({ ...record, batches: [] });
+
+        expect(await service.batches(10)).toEqual([]);
+        expect(repos.get(Batch).find).not.toHaveBeenCalled();
+      });
+
+      it('404s a faculty member who is gone', async () => {
+        qb.getOne.mockResolvedValue(null);
+
+        await expect(service.batches(10)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+      });
     });
   });
 

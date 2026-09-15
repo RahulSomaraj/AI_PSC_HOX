@@ -172,9 +172,11 @@ returns the `FacultyRole` list with display labels. Lift that shape.
 waits for task 4. Ship the questions half first and extend it rather than
 holding the endpoint back.
 
-**Two endpoints you do not need to build:** `/faculty/:id/subjects` and
-`/faculty/:id/batches`. The faculty row already embeds `subject: { id, name }`
-and `assignedBatches: [{ id, name }]`, name-sorted.
+**`/faculty/:id/subjects` and `/faculty/:id/batches` — built after all.**
+This section once said they were unnecessary because the faculty row embeds
+`subject: { id, name }` and `assignedBatches: [{ id, name }]`. The console
+calls both anyway and needs more than the row carries — a topic count, and
+each batch's exam, mode and size — so they now exist (see `API_CONTRACT.md`).
 
 ### Not assigned
 

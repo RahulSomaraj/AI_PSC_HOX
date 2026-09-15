@@ -394,7 +394,7 @@ is in. Newest first.
 
 ```json
 {
-  "items": [ { "id": 12, "title": "…", "message": "…", "target": "All Students", "…": "…" } ],
+  "data": [ { "id": 12, "title": "…", "message": "…", "target": "All Students", "…": "…" } ],
   "total": 15,
   "page": 1,
   "limit": 10,
@@ -882,11 +882,11 @@ student's visibility is fixed by who they are.
 
 Ordered newest first, `id` ascending within a day.
 
-**Response `200`**
+**Response `200`** — rows under `data`, the console's `Paginated<ContentItem>`:
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": 12,
       "title": "Indian Polity - Fundamental Rights notes",
@@ -1137,6 +1137,21 @@ of the batch surface is unchanged.
 | `isActive` | — | Response only, derived: `false` only when `status` is `inactive`. |
 | `shift` | — | **Accepted and ignored.** The table has no shift — `mode` replaced it. Allowed only so the console's `shift.ts` guess does not trip `forbidNonWhitelisted`. Delete it from the console and it can come out of the DTO. |
 
+### `GET /batches` — paging is opt-in
+
+**Without `page`, a plain array** of every matching batch, ordered by start
+date. This is what the console reads: four of its screens fetch `/batches`
+whole — the batch list and three batch pickers — and it filters and pages the
+list itself.
+
+**With `page`,** one page as `{ data, total, page, limit, totalPages }` —
+`limit` defaults to 10, capped at 100.
+
+The `examId`, `mode`, `status` and `search` filters apply either way.
+
+> This used to be paged by default, under `items`. Nothing was reading it that
+> way: the console always expected the array.
+
 ### `POST /batches` — what the console sends
 
 ```json
@@ -1226,7 +1241,7 @@ page one.
 
 ```json
 {
-  "items": [ { "id": 12, "code": "Q-012", "status": "published", "…": "…" } ],
+  "data": [ { "id": 12, "code": "Q-012", "status": "published", "…": "…" } ],
   "total": 21,
   "page": 3,
   "limit": 10,

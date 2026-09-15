@@ -81,7 +81,7 @@ export class FindQuestionsQueryDto {
   // switching this route to pages outright would silently hand it page one.
   @ApiPropertyOptional({
     description:
-      'Send to get one page back as { items, total, page, limit, totalPages }. Omit for the full array.',
+      'Send to get one page back as { data, total, page, limit, totalPages }. Omit for the full array.',
     minimum: 1,
   })
   @IsOptional()

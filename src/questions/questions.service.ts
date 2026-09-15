@@ -35,7 +35,7 @@ export type QuestionView = Question & {
 };
 
 export interface PaginatedQuestions {
-  items: QuestionView[];
+  data: QuestionView[];
   total: number;
   page: number;
   limit: number;
@@ -252,7 +252,7 @@ export class QuestionsService {
       .getManyAndCount();
 
     return {
-      items: records.map((question) => this.present(question)),
+      data: records.map((question) => this.present(question)),
       total,
       page,
       limit,

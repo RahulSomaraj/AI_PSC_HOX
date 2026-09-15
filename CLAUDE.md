@@ -319,9 +319,17 @@ faculty-facing screen.
   camelCase.
 - **`numeric` columns use `DecimalTransformer`** so they serialise as numbers,
   not strings. Apply it to any new `numeric` column.
-- **Pagination is inconsistent:** `/users` and `/batches` return rows under
-  `data`; `/faculty` returns them under `items`. Prefer `items` for new
-  endpoints and note the divergence in `API_CONTRACT.md`.
+- **Paged lists put rows under `data`** — `{ data, total, page, limit,
+  totalPages }` — matching the console's single `Paginated<T>` type and
+  `/users`. (This rule used to say `items`, to avoid `data.data` in the dev
+  response envelope; the console unwraps that envelope in one place, so the
+  nesting never reaches a caller.) `/users`, `/content`, `/batches`,
+  `/faculty`, `/questions` and `/notifications/mine` follow it. The Reports
+  endpoints still return `items`.
+- **Paging is opt-in where the console fetches a list whole.** `/batches`,
+  `/faculty` and `/questions` return a **plain array** unless `page` is sent,
+  because the console reads those three as arrays and filters them itself.
+  Match what the screen reads before choosing a shape.
 - **Stale specs.** 19 pre-existing `tsc` errors live in `.spec.ts` files
   (`app`, `categories`, `course`, `questions`, `users`). They are excluded
   from `tsconfig.build.json`, so the build is unaffected — but `npm test`

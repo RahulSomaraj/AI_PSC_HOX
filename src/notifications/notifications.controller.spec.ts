@@ -24,7 +24,7 @@ describe('Notifications HTTP contract', () => {
     create: jest.fn().mockResolvedValue({ id: 1 }),
     findAllSent: jest.fn().mockResolvedValue([]),
     findForUser: jest.fn().mockResolvedValue({
-      items: [],
+      data: [],
       total: 0,
       page: 1,
       limit: 10,

@@ -49,7 +49,8 @@ a new account; it does not convert an existing student or administrator.
 ## List and filters
 
 ```text
-GET /faculty?page=1&limit=10&search=Omari&subjectId=1&role=teacher&isActive=true
+GET /faculty?search=Omari&subjectId=1&role=teacher&isActive=true
+GET /faculty?page=1&limit=10&search=Omari
 ```
 
 All filters are optional and combine with AND:
@@ -61,14 +62,16 @@ All filters are optional and combine with AND:
 | `role` | Job role filter |
 | `isActive` | `true` or `false`; omit for all statuses |
 | `batchId` | Assigned batch filter |
-| `page` | One-based page, default 1 |
-| `limit` | Rows per page, 1–100, default 10 |
+| `page` | **Opt-in.** One-based page. Omit it for the full array. |
+| `limit` | Rows per page when `page` is sent, 1–100, default 10 |
 
-The response payload is:
+**Paging is opt-in.** Without `page` the response is a **plain array** of
+faculty members — what the console reads, since it fetches the list whole and
+filters and pages it itself. With `page`, the payload is one page:
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": 1,
       "userId": 12,
@@ -100,11 +103,13 @@ The response payload is:
 
 Results are ordered by creation date, then ID, descending. Multiple batches do
 not duplicate faculty rows; filtering on one batch still returns all current
-assignments. An empty result has `items: []` and `totalPages: 0`.
+assignments. An empty page has `data: []` and `totalPages: 0`; with no `page`,
+no matches is simply `[]`.
 
-The existing development response interceptor wraps this payload under `data`
-with `status` and `message`; production currently returns the payload directly.
-Using `items` inside the payload keeps pagination metadata together in both modes.
+Rows sit under `data`, matching the console's `Paginated<T>` and `GET /users`.
+The development response interceptor also wraps every payload under a `data` of
+its own, but the console unwraps that envelope in one place, so no caller sees
+`data.data`. (This page previously used `items` to avoid exactly that nesting.)
 
 **`subjects`, `batches` and `lastLoginAt` are the console's `FacultyMember`
 names**, sent beside the fuller fields rather than replacing them:

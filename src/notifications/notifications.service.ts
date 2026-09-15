@@ -113,7 +113,7 @@ export class NotificationsService {
       .getManyAndCount();
 
     return {
-      items: records.map((record) => this.present(record)),
+      data: records.map((record) => this.present(record)),
       total,
       page,
       limit,

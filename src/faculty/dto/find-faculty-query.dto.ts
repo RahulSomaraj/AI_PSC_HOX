@@ -13,20 +13,31 @@ import {
 import { FacultyRole } from '../faculty-role.enum';
 
 export class FindFacultyQueryDto {
-  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  // No class default: paging is opt-in, so "page was not sent" has to stay
+  // distinguishable from "page=1". The console fetches the whole list.
+  @ApiPropertyOptional({
+    minimum: 1,
+    description:
+      'Send to get one page back as { data, total, page, limit, totalPages }. Omit for the full array.',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page: number = 1;
+  page?: number;
 
-  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
+  @ApiPropertyOptional({
+    default: 10,
+    minimum: 1,
+    maximum: 100,
+    description: 'Rows per page when `page` is sent.',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
-  limit: number = 10;
+  limit?: number;
 
   @ApiPropertyOptional({
     description:

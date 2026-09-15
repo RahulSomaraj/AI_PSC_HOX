@@ -123,7 +123,8 @@ export class ContentService {
       .getManyAndCount();
 
     return {
-      items: records.map((record) => this.present(record)),
+      // `data`, matching the console's Paginated<T> and GET /users.
+      data: records.map((record) => this.present(record)),
       total,
       page,
       limit,

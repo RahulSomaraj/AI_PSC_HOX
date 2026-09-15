@@ -23,7 +23,7 @@ describe('Faculty HTTP contract', () => {
   const service = {
     create: jest.fn().mockResolvedValue({ id: 1 }),
     findAll: jest.fn().mockResolvedValue({
-      items: [],
+      data: [],
       total: 0,
       page: 1,
       limit: 10,

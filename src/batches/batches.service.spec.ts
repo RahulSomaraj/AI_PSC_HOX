@@ -43,6 +43,7 @@ describe('BatchesService', () => {
       create: jest.fn((value) => ({ ...value })),
       save: jest.fn((value) => Promise.resolve({ id: 7, ...value })),
       findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([stored]),
       findAndCount: jest.fn().mockResolvedValue([[stored], 1]),
       softDelete: jest.fn(),
     };
@@ -119,9 +120,9 @@ describe('BatchesService', () => {
     });
 
     it('present every row of the list the same way', async () => {
-      const page = await service.findAll({});
+      const list = (await service.findAll({})) as any[];
 
-      expect(page.items[0]).toMatchObject({ targetExamId: 3, isActive: true });
+      expect(list[0]).toMatchObject({ targetExamId: 3, isActive: true });
     });
 
     it('do not alter the entity that was loaded', async () => {
@@ -163,6 +164,44 @@ describe('BatchesService', () => {
         examId: 3,
       });
       expect(errors.map((e) => e.property)).toContain('examId');
+    });
+  });
+
+  describe('findAll', () => {
+    it('returns a plain array when no page is asked for - what the console reads', async () => {
+      const result = await service.findAll({ mode: BatchMode.Online });
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(batches.findAndCount).not.toHaveBeenCalled();
+      expect(batches.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { mode: BatchMode.Online } }),
+      );
+    });
+
+    it('returns one page under data when a page is asked for', async () => {
+      batches.findAndCount.mockResolvedValue([[stored], 24]);
+
+      const result: any = await service.findAll({ page: 2, limit: 10 });
+
+      expect(batches.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 10, take: 10 }),
+      );
+      expect(result).toMatchObject({
+        total: 24,
+        page: 2,
+        limit: 10,
+        totalPages: 3,
+      });
+      expect(result.data[0]).toMatchObject({ targetExamId: 3 });
+      expect(result).not.toHaveProperty('items');
+    });
+
+    it('caps the page size at 100', async () => {
+      await service.findAll({ page: 1, limit: 500 });
+
+      expect(batches.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
     });
   });
 

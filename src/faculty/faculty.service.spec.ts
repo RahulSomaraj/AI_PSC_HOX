@@ -52,6 +52,7 @@ function queryBuilder() {
     qb[method] = jest.fn().mockReturnValue(qb);
   }
   qb.getManyAndCount = jest.fn();
+  qb.getMany = jest.fn();
   qb.getOne = jest.fn();
   qb.getRawMany = jest.fn().mockResolvedValue([]);
   qb.getRawOne = jest.fn().mockResolvedValue(undefined);
@@ -135,6 +136,7 @@ describe('FacultyService', () => {
     }
     qb.getOne.mockResolvedValue(record);
     qb.getManyAndCount.mockResolvedValue([[record], 1]);
+    qb.getMany.mockResolvedValue([record]);
     const manager = { getRepository: (entity: unknown) => repos.get(entity) };
     source = {
       manager,
@@ -238,7 +240,7 @@ describe('FacultyService', () => {
       limit: 10,
       totalPages: 3,
     });
-    expect(result.items[0].assignedBatches).toHaveLength(2);
+    expect((result as any).data[0].assignedBatches).toHaveLength(2);
   });
 
   it('parameterizes name/exam search and escapes wildcard characters', async () => {
@@ -312,16 +314,36 @@ describe('FacultyService', () => {
     });
   });
 
-  it('returns a valid empty page', async () => {
-    qb.getManyAndCount.mockResolvedValue([[], 0]);
-    expect(await service.findAll(new FindFacultyQueryDto())).toEqual({
-      items: [],
-      total: 0,
-      page: 1,
-      limit: 10,
-      totalPages: 0,
+  describe('paging is opt-in', () => {
+    it('returns a plain array when no page is asked for - what the console reads', async () => {
+      const result = await service.findAll(new FindFacultyQueryDto());
+
+      expect(Array.isArray(result)).toBe(true);
+      expect((result as any[])[0].name).toBe('Omari Everett');
+      expect(qb.skip).not.toHaveBeenCalled();
+      expect(qb.getManyAndCount).not.toHaveBeenCalled();
     });
-    expect(sessions.getRawMany).not.toHaveBeenCalled();
+
+    it('returns an empty array, not an envelope, for no matches', async () => {
+      qb.getMany.mockResolvedValue([]);
+
+      expect(await service.findAll(new FindFacultyQueryDto())).toEqual([]);
+      expect(sessions.getRawMany).not.toHaveBeenCalled();
+    });
+
+    it('returns a valid empty page under data when a page is asked for', async () => {
+      qb.getManyAndCount.mockResolvedValue([[], 0]);
+
+      expect(
+        await service.findAll({ ...new FindFacultyQueryDto(), page: 1 }),
+      ).toEqual({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+    });
   });
 
   it('returns 404 for missing/deleted records', async () => {

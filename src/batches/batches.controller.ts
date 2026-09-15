@@ -109,7 +109,7 @@ export class BatchesController {
   @ApiOperation({
     summary: 'List batches',
     description:
-      'Paginated, ordered by start date. Returns items plus the total count before paging, which is what the list footer needs. Filter by exam, mode or status, and search on the batch name.',
+      'Ordered by start date. Without `page`, a plain array of every match - what the console reads. With `page`, one page as { data, total, page, limit, totalPages }. Filter by exam, mode or status, and search on the batch name.',
   })
   @ApiQuery({ name: 'examId', required: false, type: 'number' })
   @ApiQuery({ name: 'mode', required: false, enum: BatchMode })
@@ -124,26 +124,34 @@ export class BatchesController {
     name: 'page',
     required: false,
     type: 'number',
-    description: '1-based page number (default 1)',
+    description:
+      '1-based page number. Send it to get one page back; omit it for the full array.',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: 'number',
-    description: 'Rows per page (default 10, capped at 100)',
+    description:
+      'Rows per page when `page` is sent (default 10, capped at 100)',
   })
   @ApiResponse({
     status: 200,
-    description: 'Batches retrieved successfully',
+    description:
+      'A plain array of batches, or - when `page` is sent - one page of them.',
     schema: {
-      type: 'object',
-      properties: {
-        items: { type: 'array', items: { type: 'object' } },
-        total: { type: 'number', example: 24 },
-        page: { type: 'number', example: 1 },
-        limit: { type: 'number', example: 10 },
-        totalPages: { type: 'number', example: 3 },
-      },
+      oneOf: [
+        { type: 'array', items: { type: 'object' } },
+        {
+          type: 'object',
+          properties: {
+            data: { type: 'array', items: { type: 'object' } },
+            total: { type: 'number', example: 24 },
+            page: { type: 'number', example: 1 },
+            limit: { type: 'number', example: 10 },
+            totalPages: { type: 'number', example: 3 },
+          },
+        },
+      ],
     },
   })
   @ApiResponse({ status: 400, description: 'Invalid query parameter' })

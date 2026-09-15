@@ -33,7 +33,7 @@ export type BatchView = Batch & {
 };
 
 export interface PaginatedBatches {
-  items: BatchView[];
+  data: BatchView[];
   total: number;
   page: number;
   limit: number;
@@ -70,9 +70,12 @@ export class BatchesService {
   }
 
   /**
-   * The admin list is paginated - it is read straight into a table with a
-   * rows-per-page control, so it returns the page plus the total the footer
-   * needs rather than the whole table.
+   * Paging is opt-in.
+   *
+   * Without `page` this returns every match as a plain array: that is what
+   * the console reads - four of its screens fetch `/batches` whole, for the
+   * batch list and for batch pickers - and it filters and pages the list
+   * itself. With `page`, one page plus the total a table footer needs.
    */
   async findAll(
     filters: {
@@ -83,7 +86,7 @@ export class BatchesService {
       page?: number;
       limit?: number;
     } = {},
-  ): Promise<PaginatedBatches> {
+  ): Promise<BatchView[] | PaginatedBatches> {
     try {
       const where: FindOptionsWhere<Batch> = {};
       if (filters.examId !== undefined) where.examId = filters.examId;
@@ -91,19 +94,30 @@ export class BatchesService {
       if (filters.status !== undefined) where.status = filters.status;
       if (filters.search) where.name = ILike(`%${filters.search}%`);
 
-      const page = filters.page ?? 1;
+      const order = { startDate: 'ASC', id: 'ASC' } as const;
+
+      if (filters.page === undefined) {
+        const batches = await this.batchRepository.find({
+          where,
+          relations: ['exam'],
+          order,
+        });
+        return batches.map((batch) => this.present(batch));
+      }
+
+      const page = filters.page;
       const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-      const [items, total] = await this.batchRepository.findAndCount({
+      const [rows, total] = await this.batchRepository.findAndCount({
         where,
         relations: ['exam'],
-        order: { startDate: 'ASC', id: 'ASC' },
+        order,
         skip: (page - 1) * limit,
         take: limit,
       });
 
       return {
-        items: items.map((batch) => this.present(batch)),
+        data: rows.map((batch) => this.present(batch)),
         total,
         page,
         limit,

@@ -45,9 +45,14 @@ export class FacultyService {
       .where('faculty.deletedAt IS NULL');
   }
 
+  /**
+   * Paging is opt-in. Without `page` this returns every match as a plain
+   * array - the console fetches the faculty list whole and filters and pages
+   * it itself. With `page`, one page under `data`, plus the totals.
+   */
   async findAll(query: FindFacultyQueryDto) {
     const {
-      page = 1,
+      page,
       limit = 10,
       search,
       subjectId,
@@ -88,14 +93,18 @@ export class FacultyService {
           { search: `%${search.replace(/[\\%_]/g, '\\$&')}%` },
         );
     }
+    qb.orderBy('faculty.createdAt', 'DESC').addOrderBy('faculty.id', 'DESC');
+
+    if (page === undefined) {
+      return this.present(await qb.getMany(), this.dataSource.manager);
+    }
+
     const [records, total] = await qb
-      .orderBy('faculty.createdAt', 'DESC')
-      .addOrderBy('faculty.id', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
     return {
-      items: await this.present(records, this.dataSource.manager),
+      data: await this.present(records, this.dataSource.manager),
       total,
       page,
       limit,

@@ -294,7 +294,7 @@ describe('QuestionsService', () => {
         limit: 10,
         totalPages: 3,
       });
-      expect(result.items[0].code).toBe('Q-001');
+      expect(result.data[0].code).toBe('Q-001');
     });
 
     it('finds a question by its code', async () => {

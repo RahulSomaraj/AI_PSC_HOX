@@ -259,7 +259,7 @@ describe('NotificationsService', () => {
         limit: 10,
         totalPages: 2,
       });
-      expect(result.items[0]).toMatchObject({
+      expect(result.data[0]).toMatchObject({
         message: 'LDC results published',
         target: ALL_STUDENTS,
       });

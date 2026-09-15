@@ -10,6 +10,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Batch } from '../../batches/entities/batch.entity';
+import {
+  NotificationChannel,
+  NotificationLanguage,
+  NotificationStatus,
+} from '../notification-fields.enum';
 
 /**
  * An announcement an admin sends to students - "Friday's class is moved",
@@ -34,8 +39,24 @@ export class Notification {
   @Column({ type: 'varchar', length: 200 })
   title: string;
 
+  /** Called `message` to match the console; this column was `body` before. */
   @Column({ type: 'text' })
-  body: string;
+  message: string;
+
+  /** Always `app-push` until an SMS or email sender exists. */
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: NotificationChannel.AppPush,
+  })
+  channel: NotificationChannel;
+
+  @Column({ type: 'varchar', length: 5, default: NotificationLanguage.English })
+  language: NotificationLanguage;
+
+  /** Always `sent` until a sender exists that can report a failure. */
+  @Column({ type: 'varchar', length: 20, default: NotificationStatus.Sent })
+  status: NotificationStatus;
 
   /**
    * Who it is for: a batch id, or NULL for every student.

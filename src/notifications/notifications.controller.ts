@@ -26,8 +26,8 @@ import { NotificationDto } from './dto/notification.dto';
 
 // No @Roles at class level, deliberately. RolesGuard reads handler metadata
 // first and falls back to the class, so a class-level @Roles(Role.Admin)
-// would silently lock students out of their own notification list. The write
-// side carries its own.
+// would silently lock students out of `/notifications/mine`. The admin routes
+// carry their own.
 @ApiTags('notifications')
 @ApiBearerAuth('JWT-auth')
 @ApiResponse({ status: 401, description: 'Authentication required' })
@@ -44,7 +44,7 @@ export class NotificationsController {
   })
   @ApiResponse({ status: 201, type: NotificationDto })
   @ApiResponse({ status: 403, description: 'Admin access required' })
-  @ApiResponse({ status: 404, description: 'Batch not found' })
+  @ApiResponse({ status: 404, description: 'No batch with that name' })
   create(
     @Body() dto: CreateNotificationDto,
     @GetUser('id') actorId: number,
@@ -52,7 +52,27 @@ export class NotificationsController {
     return this.notificationsService.create(dto, actorId);
   }
 
+  /**
+   * The admin Notifications screen: everything sent, newest first.
+   *
+   * This route used to be the student's own inbox. It became the admin list
+   * because that is what the console's Notifications screen calls; the inbox
+   * moved to `/notifications/mine`, which nothing was reading yet.
+   */
   @Get()
+  @Roles(Role.Admin)
+  @ApiOperation({
+    summary: 'List every announcement sent (Admin only)',
+    description:
+      'Newest first, as a plain array - the console searches, filters and pages it.',
+  })
+  @ApiResponse({ status: 200, type: [NotificationDto] })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
+  findAllSent(): Promise<NotificationDto[]> {
+    return this.notificationsService.findAllSent();
+  }
+
+  @Get('mine')
   @ApiOperation({
     summary: 'List the announcements addressed to the caller',
     description:

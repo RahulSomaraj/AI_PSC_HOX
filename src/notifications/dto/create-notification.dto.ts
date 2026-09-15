@@ -1,13 +1,29 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  ALL_STUDENTS,
+  NotificationLanguage,
+} from '../notification-fields.enum';
 
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
+
+/** What the console's notification composer sends. */
 export class CreateNotificationDto {
   @ApiProperty({ example: 'Friday class moved to 4 PM' })
   @IsString()
+  @MinLength(1, { message: 'A title is required' })
   @MaxLength(200)
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trim)
   title: string;
+
+  @ApiProperty({
+    enum: NotificationLanguage,
+    example: NotificationLanguage.English,
+  })
+  @IsEnum(NotificationLanguage, { message: 'Choose a language' })
+  language: NotificationLanguage;
 
   @ApiProperty({
     example:
@@ -15,17 +31,16 @@ export class CreateNotificationDto {
   })
   @IsString()
   @MaxLength(5000)
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  body: string;
+  @Transform(trim)
+  message: string;
 
-  @ApiPropertyOptional({
-    minimum: 1,
-    description:
-      'Send to one batch. Omit to send to every student. A batch that does not exist, or is deleted, is a 404.',
+  @ApiProperty({
+    example: ALL_STUDENTS,
+    description: `Who it goes to: "${ALL_STUDENTS}", or the exact name of a live batch. A batch name that does not exist is a 404.`,
   })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  batchId?: number;
+  @IsString()
+  @MinLength(1, { message: 'Choose who this goes to' })
+  @MaxLength(200)
+  @Transform(trim)
+  target: string;
 }

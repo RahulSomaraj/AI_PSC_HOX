@@ -302,49 +302,86 @@ recipient: a message to a 400-student batch is a single row, fanned out at
 read time.
 
 There is **no read/unread state** in this iteration, so a bell icon can show
-a list but not an unread badge. Adding one means a per-recipient table and a
-third endpoint; it does not change the two below.
+a list but not an unread badge. Adding one means a per-recipient table and
+another endpoint; it does not change the three below.
 
-### `POST /notifications`
-
-**Roles:** `admin`
-
-**Request**
+Every response uses the console's `AdminNotification` shape:
 
 ```json
 {
+  "id": 12,
   "title": "Friday class moved to 4 PM",
-  "body": "This week only, the Friday revision class starts at 4 PM.",
+  "message": "This week only, the Friday revision class starts at 4 PM.",
+  "channel": "app-push",
+  "target": "LDC Evening 2026",
+  "language": "en",
+  "sentAt": "2026-09-11T10:35:00.000Z",
+  "status": "sent",
   "batchId": 3
 }
 ```
 
 | Field | Notes |
 |---|---|
-| `title` | Max 200 characters. |
-| `body` | Max 5000 characters. |
-| `batchId` | Optional. Send to one batch. **Omit to send to every student.** |
+| `message` | The text. This field was called `body` before. |
+| `channel` | **Always `app-push`.** Nothing sends SMS or email; the column is ready for a sender. |
+| `target` | The batch name it went to, or `"All Students"`. A batch deleted since keeps its name here. |
+| `language` | `en` or `ml`. |
+| `sentAt` | ISO timestamp. |
+| `status` | **Always `sent`.** An in-app announcement cannot fail to deliver; `failed` becomes reachable only with a real sender. |
+| `batchId` | Beyond the console type — the id `target` names, or `null`. |
 
-The author is taken from the JWT — do not send `createdBy`, and note that
-`forbidNonWhitelisted` makes any undeclared property a `400`.
+### `POST /notifications`
 
-**Response `201`**
+**Roles:** `admin`
+
+**Request** — exactly what the console's composer sends:
 
 ```json
 {
-  "id": 12,
   "title": "Friday class moved to 4 PM",
-  "body": "This week only, the Friday revision class starts at 4 PM.",
-  "batchId": 3,
-  "createdAt": "2026-09-11T10:35:00.000Z"
+  "language": "en",
+  "message": "This week only, the Friday revision class starts at 4 PM.",
+  "target": "LDC Evening 2026"
 }
 ```
 
+| Field | Notes |
+|---|---|
+| `title` | Required, max 200. |
+| `language` | Required, `en` or `ml`. |
+| `message` | Max 5000. |
+| `target` | Required. `"All Students"`, or the **exact name** of a live batch. |
+
+`target` is a name, not an id, because the composer's picker is built from the
+batch list's names. Batch names are unique among live batches, so a name
+resolves to one batch or none.
+
+The author is taken from the JWT — do not send `createdBy`, and note that
+`forbidNonWhitelisted` makes any undeclared property a `400`, including the old
+`body` and `batchId`.
+
+**Response `201`** — one notification in the shape above.
+
 | Status | When |
 |---|---|
-| `404` | `batchId` names a batch that does not exist or was deleted |
+| `404` | `target` is not `"All Students"` and no live batch has that name — the message is **not** sent to everyone instead |
 
-### `GET /notifications`
+### `GET /notifications` — the admin list
+
+Every announcement ever sent, newest first. Backs the Notifications screen.
+
+**Roles:** `admin`
+
+**Response `200`** — a **plain array** of notifications in the shape above. The
+console searches, filters by `status` and pages this list itself.
+
+> **This route changed meaning.** It used to be the student's own inbox. It is
+> now the admin list, because that is what the console's Notifications screen
+> calls; the inbox moved to `/notifications/mine` below. Nothing was reading
+> the inbox yet.
+
+### `GET /notifications/mine` — the caller's inbox
 
 Everything sent to everyone, plus everything sent to the batch the **caller**
 is in. Newest first.
@@ -357,15 +394,7 @@ is in. Newest first.
 
 ```json
 {
-  "items": [
-    {
-      "id": 12,
-      "title": "Friday class moved to 4 PM",
-      "body": "This week only, the Friday revision class starts at 4 PM.",
-      "batchId": 3,
-      "createdAt": "2026-09-11T10:35:00.000Z"
-    }
-  ],
+  "items": [ { "id": 12, "title": "…", "message": "…", "target": "All Students", "…": "…" } ],
   "total": 15,
   "page": 1,
   "limit": 10,
@@ -377,11 +406,6 @@ The batch is resolved from the caller's own aspirant profile — there is no
 way to ask for another user's notifications. A caller with no profile or no
 batch (an admin, a staff account, an unassigned student) sees the global
 announcements only, which is a `200` with a shorter list, not an error.
-
-Note this is the *recipient's* view. An admin calling it sees what was sent
-to everyone, **not** an audit of everything they have sent — a batch-targeted
-announcement is invisible to its author here. An admin listing endpoint is
-not part of this iteration.
 
 ---
 

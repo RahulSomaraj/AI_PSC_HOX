@@ -22,6 +22,7 @@ describe('Notifications HTTP contract', () => {
   let app: INestApplication;
   const service = {
     create: jest.fn().mockResolvedValue({ id: 1 }),
+    findAllSent: jest.fn().mockResolvedValue([]),
     findForUser: jest.fn().mockResolvedValue({
       items: [],
       total: 0,
@@ -30,7 +31,13 @@ describe('Notifications HTTP contract', () => {
       totalPages: 0,
     }),
   };
-  const input = { title: 'Class moved', body: 'Friday, 4 PM' };
+  /** Exactly what the console's composer sends. */
+  const composed = {
+    title: 'Class moved',
+    language: 'en',
+    message: 'Friday, 4 PM',
+    target: 'All Students',
+  };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -70,64 +77,102 @@ describe('Notifications HTTP contract', () => {
   });
   beforeEach(() => jest.clearAllMocks());
 
-  it.each(['get', 'post'])('rejects unauthenticated %s', async (method) => {
-    await request(app.getHttpServer())
-      [method]('/notifications')
-      .send(input)
-      .expect(401);
+  it.each([
+    ['get', '/notifications'],
+    ['get', '/notifications/mine'],
+    ['post', '/notifications'],
+  ])('rejects unauthenticated %s %s', async (method, path) => {
+    await request(app.getHttpServer())[method](path).send(composed).expect(401);
+  });
+
+  describe('the admin list, GET /notifications', () => {
+    it('lets an admin read every notification sent', async () => {
+      await request(app.getHttpServer())
+        .get('/notifications')
+        .set('Authorization', 'Bearer admin')
+        .expect(200);
+
+      expect(service.findAllSent).toHaveBeenCalled();
+    });
+
+    it.each(['user', 'staff'])('denies the %s account role', async (role) => {
+      await request(app.getHttpServer())
+        .get('/notifications')
+        .set('Authorization', `Bearer ${role}`)
+        .expect(403);
+
+      expect(service.findAllSent).not.toHaveBeenCalled();
+    });
   });
 
   // The reason the controller carries no class-level @Roles: RolesGuard
   // falls back to class metadata, so one there would 403 every student
   // reading their own bell.
-  it.each(['user', 'staff'])('lets the %s account role read', async (role) => {
-    await request(app.getHttpServer())
-      .get('/notifications')
-      .set('Authorization', `Bearer ${role}`)
-      .expect(200);
+  describe('the inbox, GET /notifications/mine', () => {
+    it.each(['user', 'staff'])(
+      'lets the %s account role read',
+      async (role) => {
+        await request(app.getHttpServer())
+          .get('/notifications/mine')
+          .set('Authorization', `Bearer ${role}`)
+          .expect(200);
 
-    expect(service.findForUser).toHaveBeenCalledWith(42, {
-      page: 1,
-      limit: 10,
-    });
+        expect(service.findForUser).toHaveBeenCalledWith(42, {
+          page: 1,
+          limit: 10,
+        });
+      },
+    );
   });
 
-  it.each(['user', 'staff'])(
-    'denies the %s account role a send',
-    async (role) => {
+  describe('POST /notifications', () => {
+    it.each(['user', 'staff'])(
+      'denies the %s account role a send',
+      async (role) => {
+        await request(app.getHttpServer())
+          .post('/notifications')
+          .set('Authorization', `Bearer ${role}`)
+          .send(composed)
+          .expect(403);
+
+        expect(service.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('accepts what the composer sends, stamping the author from the token', async () => {
       await request(app.getHttpServer())
         .post('/notifications')
-        .set('Authorization', `Bearer ${role}`)
-        .send(input)
-        .expect(403);
+        .set('Authorization', 'Bearer admin')
+        .send(composed)
+        .expect(201);
 
-      expect(service.create).not.toHaveBeenCalled();
-    },
-  );
+      expect(service.create).toHaveBeenCalledWith(composed, 42);
+    });
 
-  it('lets an admin send, stamping the author from the token', async () => {
-    await request(app.getHttpServer())
-      .post('/notifications')
-      .set('Authorization', 'Bearer admin')
-      .send({ ...input, batchId: 3 })
-      .expect(201);
+    it('rejects the old body field', async () => {
+      const { message: _message, ...rest } = composed;
 
-    expect(service.create).toHaveBeenCalledWith({ ...input, batchId: 3 }, 42);
-  });
+      await request(app.getHttpServer())
+        .post('/notifications')
+        .set('Authorization', 'Bearer admin')
+        .send({ ...rest, body: 'Friday, 4 PM' })
+        .expect(400);
+    });
 
-  it('rejects a property the DTO does not declare', async () => {
-    await request(app.getHttpServer())
-      .post('/notifications')
-      .set('Authorization', 'Bearer admin')
-      .send({ ...input, createdBy: 1 })
-      .expect(400);
-  });
+    it('rejects a property the DTO does not declare', async () => {
+      await request(app.getHttpServer())
+        .post('/notifications')
+        .set('Authorization', 'Bearer admin')
+        .send({ ...composed, createdBy: 1 })
+        .expect(400);
+    });
 
-  it('rejects a title over the column length', async () => {
-    await request(app.getHttpServer())
-      .post('/notifications')
-      .set('Authorization', 'Bearer admin')
-      .send({ ...input, title: 'x'.repeat(201) })
-      .expect(400);
+    it('rejects a title over the column length', async () => {
+      await request(app.getHttpServer())
+        .post('/notifications')
+        .set('Authorization', 'Bearer admin')
+        .send({ ...composed, title: 'x'.repeat(201) })
+        .expect(400);
+    });
   });
 });

@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 import { Topic } from '../../topics/entities/topic.entity';
 import { Subtopic } from '../../subtopics/entities/subtopic.entity';
+import { QuestionLanguage, QuestionStatus } from '../question-fields.enum';
 
 @Entity({ name: 'questions' })
 export class Question {
@@ -88,6 +89,38 @@ export class Question {
 
   @Column({ default: true })
   isActive: boolean; // Whether the question is active
+
+  // The four columns below are the Question Bank's, per BACKEND_ISSUES.md
+  // P1-1. Column names follow this entity's own camelCase convention rather
+  // than the snake_case the newer tables use, so the table stays consistent
+  // with itself.
+  //
+  // `code` is not among them: it is derived from `id` when a question is
+  // presented (Q-001), so it needs no column, no backfill, and cannot
+  // collide.
+  //
+  // `type`, `year` and `examLevelId` are deliberately NOT columns. The Add
+  // Question form has no field for any of them, so nothing could ever write
+  // them - P1-1 asks that they wait for Q33.
+
+  // Default `published`, not `draft`, and only for the database. Adding a
+  // NOT NULL column to a table that already holds live questions fills
+  // those rows with the default - and questions students are answering today
+  // must not turn into drafts. New questions are given `draft` explicitly
+  // by QuestionsService.create unless the request says otherwise.
+  @Column({ type: 'varchar', length: 20, default: 'published' })
+  status: QuestionStatus;
+
+  @Column({ type: 'varchar', length: 5, default: 'en' })
+  language: QuestionLanguage;
+
+  // Nullable: a draft may be saved before the time is filled in.
+  @Column({ type: 'int', nullable: true })
+  timeSeconds: number | null;
+
+  // A `fileUrl` from POST /uploads (purpose `question`).
+  @Column({ type: 'text', nullable: true })
+  imageUrl: string | null;
 
   @Column()
   createdBy: number;

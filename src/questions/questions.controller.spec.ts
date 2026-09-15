@@ -16,6 +16,8 @@ describe('QuestionsController - API Tests', () => {
     create: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
+    // GET /questions/:id presents through getOne; findOne stays for internal callers.
+    getOne: jest.fn(),
     findByCourse: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -309,23 +311,23 @@ describe('QuestionsController - API Tests', () => {
         isActive: true,
       };
 
-      mockQuestionsService.findOne.mockResolvedValue(expectedResult);
+      mockQuestionsService.getOne.mockResolvedValue(expectedResult);
 
       const result = await controller.findOne(questionId.toString());
 
       expect(result).toEqual(expectedResult);
-      expect(mockQuestionsService.findOne).toHaveBeenCalledWith(1);
+      expect(mockQuestionsService.getOne).toHaveBeenCalledWith(1);
     });
 
     it('should handle non-existent question', async () => {
       const questionId = 999;
       const errorMessage = 'Question with ID 999 not found';
-      mockQuestionsService.findOne.mockRejectedValue(new Error(errorMessage));
+      mockQuestionsService.getOne.mockRejectedValue(new Error(errorMessage));
 
       await expect(controller.findOne(questionId.toString())).rejects.toThrow(
         errorMessage,
       );
-      expect(mockQuestionsService.findOne).toHaveBeenCalledWith(999);
+      expect(mockQuestionsService.getOne).toHaveBeenCalledWith(999);
     });
   });
 
@@ -560,12 +562,12 @@ describe('QuestionsController - API Tests', () => {
     it('should handle database connection errors', async () => {
       const questionId = 1;
       const errorMessage = 'Database connection failed';
-      mockQuestionsService.findOne.mockRejectedValue(new Error(errorMessage));
+      mockQuestionsService.getOne.mockRejectedValue(new Error(errorMessage));
 
       await expect(controller.findOne(questionId.toString())).rejects.toThrow(
         errorMessage,
       );
-      expect(mockQuestionsService.findOne).toHaveBeenCalledWith(1);
+      expect(mockQuestionsService.getOne).toHaveBeenCalledWith(1);
     });
   });
 

@@ -9,10 +9,17 @@ import {
   IsOptional,
   IsUrl,
   IsBoolean,
+  IsEnum,
   Min,
   Max,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  QuestionLanguage,
+  QuestionStatus,
+  QuestionType,
+} from '../question-fields.enum';
 
 export class CreateQuestionDto {
   @ApiProperty({
@@ -84,12 +91,16 @@ export class CreateQuestionDto {
   @IsString({ each: true })
   answers: string[];
 
+  // No @IsNotEmpty: a draft may be saved before an answer is marked, and the
+  // console then sends ''. A *published* question must have one, and it must
+  // be among `answers` - QuestionsService enforces that, since it depends on
+  // `status` and a field decorator cannot see its neighbours.
   @ApiProperty({
-    description: 'The correct answer (must match one of the answers)',
+    description:
+      'The correct answer (must match one of the answers). May be empty on a draft; required once published.',
     example: 'Paris',
   })
   @IsString()
-  @IsNotEmpty()
   correctAnswer: string;
 
   @ApiPropertyOptional({
@@ -158,4 +169,81 @@ export class CreateQuestionDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  // ── The Question Bank's fields (BACKEND_ISSUES.md P1-1) ──────────────────
+
+  @ApiPropertyOptional({
+    enum: QuestionStatus,
+    default: QuestionStatus.Draft,
+    description:
+      'Editing state. Defaults to draft. Publishing requires a correct answer that is one of the answers.',
+  })
+  @IsOptional()
+  @IsEnum(QuestionStatus)
+  status?: QuestionStatus;
+
+  @ApiPropertyOptional({
+    enum: QuestionLanguage,
+    default: QuestionLanguage.English,
+  })
+  @IsOptional()
+  @IsEnum(QuestionLanguage)
+  language?: QuestionLanguage;
+
+  @ApiPropertyOptional({
+    description: 'Time allowed, in seconds. May be empty on a draft.',
+    example: 60,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt({ message: 'timeSeconds must be an integer' })
+  @Min(1, { message: 'timeSeconds must be at least 1' })
+  timeSeconds?: number | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Image or diagram - the `fileUrl` returned by POST /uploads (purpose `question`).',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  imageUrl?: string | null;
+
+  // ── Accepted and ignored ─────────────────────────────────────────────────
+  //
+  // The console sends these three on every save, always as null: the Add
+  // Question form has no field for any of them. They are declared only so
+  // `forbidNonWhitelisted` does not turn every save into a 400. They are NOT
+  // stored - P1-1 asks that the columns wait for Q33, since nothing could
+  // write them. Responses carry them back as null.
+
+  @ApiPropertyOptional({
+    enum: QuestionType,
+    nullable: true,
+    deprecated: true,
+    description: 'Ignored until Q33 is settled. Always returned as null.',
+  })
+  @IsOptional()
+  @IsEnum(QuestionType)
+  type?: QuestionType | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    deprecated: true,
+    description: 'Ignored until Q33 is settled. Always returned as null.',
+  })
+  @IsOptional()
+  @IsInt()
+  year?: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    deprecated: true,
+    description: 'Ignored until Q33 is settled. Always returned as null.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  examLevelId?: number | null;
 }

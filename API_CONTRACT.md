@@ -1106,3 +1106,83 @@ of the batch surface is unchanged.
 The **Subjects** panel (each subject with its faculty) and the **Linked
 Exams** panel need new relations — batch↔subject carrying a faculty, and
 batch↔exam. Neither exists yet.
+
+---
+
+## Questions
+
+Only what changed to match the Question Bank is documented here — the eight
+columns in `BACKEND_ISSUES.md` **P1-1**, plus paging and search.
+
+### Fields added
+
+| Field | Stored | Notes |
+|---|---|---|
+| `code` | no — derived | `Q-001`, `Q-042`, `Q-1234`, from the id. Stable and unique with no column to keep so. Never sent on create. |
+| `status` | yes | `draft` · `pending-review` · `published`. Defaults to `draft`. |
+| `language` | yes | `en` · `ml`. Defaults to `en`. |
+| `timeSeconds` | yes | Integer ≥ 1, or `null` on a draft. |
+| `imageUrl` | yes | A `fileUrl` from `POST /uploads` (purpose `question`), or `null`. |
+| `type` | **no** | Accepted, ignored, always returned `null`. |
+| `year` | **no** | Accepted, ignored, always returned `null`. |
+| `examLevelId` | **no** | Accepted, ignored, always returned `null`. |
+
+**Why `type`, `year` and `examLevelId` are not stored.** The Add Question form
+has no field for any of them, so every question the console saves sends
+`null` — P1-1 asks that the columns wait for Q33 rather than exist with
+nothing to write them. They are still *accepted* because the console sends
+them on every save, and `forbidNonWhitelisted` would otherwise turn each save
+into a `400`. The Type, Year and Exam Level filters therefore cannot work
+until Q33 is settled.
+
+### Drafts and publishing
+
+A **draft** may be saved with only the question text: empty options, no
+correct answer (`correctAnswer: ""`), no marks and no time.
+
+A question being **published** needs a correct answer, and it must be one of
+the four `answers` — otherwise `400`. The same rule applies on `PATCH`, checked
+against the row as it will be: sending just `{ "status": "published" }` to a
+draft with no answer marked is refused.
+
+If a draft *does* name an answer, it must still be one of the choices.
+
+> **Existing questions came through as `published`.** The `status` column's
+> database default is `published` so that questions students are answering
+> today were not demoted to drafts when the column was added. New questions
+> are `draft` unless the request says otherwise.
+
+> ⚠️ **Saving reorders the options.** `POST` and a `PATCH` carrying `answers`
+> shuffle them, as they always have, so what the admin typed as option B may
+> come back as option D. The correct answer is tracked by value, so marking
+> survives — but an editor that shows options by position will see them move.
+> Unchanged here; worth a decision.
+
+### `GET /questions` — paging and search
+
+| Query | Notes |
+|---|---|
+| `page` | **Opt-in.** Send it to get one page back. Omit it for the full array, exactly as before. |
+| `limit` | 1–100, default 10, when `page` is sent. |
+| `search` | Matches the question text — or a code: `Q-012` finds question 12. |
+| `language` | `en` or `ml`. |
+| `courseId`, `subjectId`, `topicId`, `subtopicId` | Unchanged. |
+
+Paging is opt-in because the **Exam Builder loads the whole bank** to pick
+questions from. Switching this route to pages outright would silently hand it
+page one.
+
+**With `page`:**
+
+```json
+{
+  "items": [ { "id": 12, "code": "Q-012", "status": "published", "…": "…" } ],
+  "total": 21,
+  "page": 3,
+  "limit": 10,
+  "totalPages": 3
+}
+```
+
+Without `page`, a plain array of the same question objects. Retired questions
+(`isActive: false`) are excluded either way.

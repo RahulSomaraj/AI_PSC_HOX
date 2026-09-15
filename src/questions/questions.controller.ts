@@ -332,7 +332,9 @@ export class QuestionsController {
   })
   @ApiResponse({ status: 404, description: 'Question not found' })
   async findOne(@Param('id') id: string) {
-    return await this.questionsService.findOne(+id);
+    // getOne, not findOne: the service's findOne returns the bare entity for
+    // its internal callers, and this route owes the Question Bank its `code`.
+    return await this.questionsService.getOne(+id);
   }
 
   @Patch(':id')

@@ -21,6 +21,26 @@ import {
   BulkQuestionsDto,
   BulkQuestionsResponseDto,
 } from './dto/bulk-questions.dto';
+import { QuestionLanguage, QuestionStatus } from './question-fields.enum';
+
+/**
+ * A question as the Question Bank reads it. `type`, `year` and `examLevelId`
+ * are always null - see CreateQuestionDto for why they are not stored.
+ */
+export type QuestionView = Question & {
+  code: string;
+  type: null;
+  year: null;
+  examLevelId: null;
+};
+
+export interface PaginatedQuestions {
+  items: QuestionView[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 @Injectable()
 export class QuestionsService {
@@ -112,9 +132,7 @@ export class QuestionsService {
         select: { id: true, topicId: true },
       });
       if (!subtopic) {
-        throw new NotFoundException(
-          `Subtopic with ID ${subtopicId} not found`,
-        );
+        throw new NotFoundException(`Subtopic with ID ${subtopicId} not found`);
       }
       if (subtopic.topicId !== topicId) {
         throw new BadRequestException(
@@ -127,16 +145,20 @@ export class QuestionsService {
   async create(
     createQuestionDto: CreateQuestionDto,
     createdBy: number,
-  ): Promise<Question> {
-    const { courseId, answers, correctAnswer, ...otherFields } =
-      createQuestionDto;
+  ): Promise<QuestionView> {
+    const {
+      courseId,
+      answers,
+      correctAnswer,
+      // Accepted from the console, never stored - see CreateQuestionDto.
+      type: _type,
+      year: _year,
+      examLevelId: _examLevelId,
+      ...otherFields
+    } = createQuestionDto;
 
-    // Validate that correct answer is in the answers array
-    if (!answers.includes(correctAnswer)) {
-      throw new BadRequestException(
-        'Correct answer must be one of the provided answer choices',
-      );
-    }
+    const status = createQuestionDto.status ?? QuestionStatus.Draft;
+    this.assertAnswerFor(status, answers, correctAnswer);
 
     // A new question carries no tags yet, so the effective triple is just
     // what the request supplies, with anything absent normalised to null.
@@ -161,9 +183,13 @@ export class QuestionsService {
       isActive: otherFields.isActive ?? true,
       difficulty: otherFields.difficulty ?? 1,
       points: otherFields.points ?? 10,
+      // Set explicitly: the column's database default is `published`, so
+      // that live questions are not demoted when the column is added.
+      status,
+      language: otherFields.language ?? QuestionLanguage.English,
     });
 
-    return await this.questionRepository.save(question);
+    return this.present(await this.questionRepository.save(question));
   }
 
   /**
@@ -172,21 +198,112 @@ export class QuestionsService {
    * than walking the hierarchy, which needs no walk anyway - a question
    * tagged to a subtopic carries its topic and subject too, so it is found
    * by any of the three.
+   *
+   * Without `page` this returns every match as a plain array, exactly as it
+   * always has: the Exam Builder loads the whole bank to pick from. With
+   * `page`, it returns one page and the totals the table footer needs.
    */
-  async findAll(filters: FindQuestionsQueryDto = {}): Promise<Question[]> {
-    const { courseId, subjectId, topicId, subtopicId } = filters;
+  async findAll(
+    filters: FindQuestionsQueryDto = {},
+  ): Promise<QuestionView[] | PaginatedQuestions> {
+    const { courseId, subjectId, topicId, subtopicId, language, search } =
+      filters;
 
-    return await this.questionRepository.find({
-      where: {
-        isActive: true,
-        ...(courseId ? { courseId } : {}),
-        ...(subjectId ? { subjectId } : {}),
-        ...(topicId ? { topicId } : {}),
-        ...(subtopicId ? { subtopicId } : {}),
-      },
-      relations: ['course', 'creator', 'updater'],
-      order: { createdAt: 'DESC' },
+    const qb = this.questionRepository
+      .createQueryBuilder('question')
+      .leftJoinAndSelect('question.course', 'course')
+      .leftJoinAndSelect('question.creator', 'creator')
+      .leftJoinAndSelect('question.updater', 'updater')
+      .where('question.isActive = :isActive', { isActive: true });
+
+    if (courseId) qb.andWhere('question.courseId = :courseId', { courseId });
+    if (subjectId) {
+      qb.andWhere('question.subjectId = :subjectId', { subjectId });
+    }
+    if (topicId) qb.andWhere('question.topicId = :topicId', { topicId });
+    if (subtopicId) {
+      qb.andWhere('question.subtopicId = :subtopicId', { subtopicId });
+    }
+    if (language) qb.andWhere('question.language = :language', { language });
+
+    if (search) {
+      // A code like Q-012 names one question by id; anything else is text.
+      const code = /^q-?0*(\d+)$/i.exec(search);
+      if (code) {
+        qb.andWhere('question.id = :codeId', { codeId: Number(code[1]) });
+      } else {
+        qb.andWhere('question.question ILIKE :search', {
+          search: `%${search.replace(/[\\%_]/g, '\\$&')}%`,
+        });
+      }
+    }
+
+    qb.orderBy('question.createdAt', 'DESC').addOrderBy('question.id', 'DESC');
+
+    if (filters.page === undefined) {
+      return (await qb.getMany()).map((question) => this.present(question));
+    }
+
+    const page = filters.page;
+    const limit = filters.limit ?? 10;
+    const [records, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items: records.map((question) => this.present(question)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /** GET /questions/:id - findOne(), in the shape the Question Bank reads. */
+  async getOne(id: number): Promise<QuestionView> {
+    return this.present(await this.findOne(id));
+  }
+
+  /**
+   * A question as the Question Bank reads it: the entity, plus `code`, plus
+   * the three fields the console types but the table does not hold.
+   *
+   * `code` is derived from the id - Q-001, Q-042, Q-1234 - so it is stable
+   * for the life of the question and unique without a column to keep so.
+   */
+  present(question: Question): QuestionView {
+    return Object.assign({}, question, {
+      code: `Q-${String(question.id).padStart(3, '0')}`,
+      type: null,
+      year: null,
+      examLevelId: null,
     });
+  }
+
+  /**
+   * A published question must have a correct answer, and it must be one of
+   * the answers. A draft may be saved before either is settled - the console
+   * sends an empty correctAnswer until an option is marked - but if a draft
+   * does name an answer, it still has to be one of the choices.
+   */
+  private assertAnswerFor(
+    status: QuestionStatus,
+    answers: string[],
+    correctAnswer: string,
+  ): void {
+    const named = correctAnswer.trim() !== '';
+
+    if (status === QuestionStatus.Published && !named) {
+      throw new BadRequestException(
+        'A published question needs a correct answer',
+      );
+    }
+    if (named && !answers.includes(correctAnswer)) {
+      throw new BadRequestException(
+        'Correct answer must be one of the provided answer choices',
+      );
+    }
   }
 
   async findOne(id: number): Promise<Question> {
@@ -214,39 +331,45 @@ export class QuestionsService {
     id: number,
     updateQuestionDto: UpdateQuestionDto,
     updatedBy: number,
-  ): Promise<Question> {
+  ): Promise<QuestionView> {
     const question = await this.findOne(id);
 
-    // If updating answers or correct answer, validate them
-    if (updateQuestionDto.answers || updateQuestionDto.correctAnswer) {
-      const answers = updateQuestionDto.answers || question.answers;
-      const correctAnswer =
-        updateQuestionDto.correctAnswer || question.correctAnswer;
+    const {
+      // Accepted from the console, never stored - see CreateQuestionDto.
+      type: _type,
+      year: _year,
+      examLevelId: _examLevelId,
+      ...changes
+    } = updateQuestionDto;
 
-      if (!answers.includes(correctAnswer)) {
-        throw new BadRequestException(
-          'Correct answer must be one of the provided answer choices',
-        );
-      }
+    // Checked against the row as it will be, not the request alone. Sending
+    // only `status: published` to a draft with no answer marked must fail,
+    // though nothing in that body is wrong on its own.
+    this.assertAnswerFor(
+      changes.status ?? question.status,
+      changes.answers ?? question.answers,
+      changes.correctAnswer !== undefined
+        ? changes.correctAnswer
+        : question.correctAnswer,
+    );
 
-      // Shuffle the answers if they're being updated
-      if (updateQuestionDto.answers) {
-        updateQuestionDto.answers = this.shuffleArray([...answers]);
-      }
+    // Shuffle the answers if they're being updated
+    if (changes.answers) {
+      changes.answers = this.shuffleArray([...changes.answers]);
     }
 
     // Resolved against the stored row, not read straight off the request: a
     // PATCH moving only one of the three ids can still break the chain.
     await this.assertTaxonomy(
-      this.resolveTag(updateQuestionDto.subjectId, question.subjectId),
-      this.resolveTag(updateQuestionDto.topicId, question.topicId),
-      this.resolveTag(updateQuestionDto.subtopicId, question.subtopicId),
+      this.resolveTag(changes.subjectId, question.subjectId),
+      this.resolveTag(changes.topicId, question.topicId),
+      this.resolveTag(changes.subtopicId, question.subtopicId),
     );
 
-    Object.assign(question, updateQuestionDto);
+    Object.assign(question, changes);
     question.updatedBy = updatedBy;
 
-    return await this.questionRepository.save(question);
+    return this.present(await this.questionRepository.save(question));
   }
 
   /**

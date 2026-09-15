@@ -38,10 +38,15 @@ import {
 /**
  * The exam / post catalog. `/exam` (singular) is a different module - it runs
  * a user through a set of questions.
+ *
+ * Served at both `/exams` and `/exam-posts`. The console asks for the
+ * catalogue as `/exam-posts` (the Batches form's exam picker), while `/exams`
+ * is what everything here already uses - including `/exams/:id/results` on a
+ * separate controller - so both stay. Same handlers, same responses.
  */
 @ApiTags('exams')
 @UseFilters(new HttpExceptionFilter('Exams'))
-@Controller('exams')
+@Controller(['exams', 'exam-posts'])
 export class ExamPostsController {
   constructor(private readonly examPostsService: ExamPostsService) {}
 

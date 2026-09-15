@@ -1251,3 +1251,25 @@ page one.
 
 Without `page`, a plain array of the same question objects. Retired questions
 (`isActive: false`) are excluded either way.
+
+---
+
+## Exam catalogue
+
+### `/exams` and `/exam-posts` — the same routes
+
+The exam / post catalogue answers at **both** paths, with identical handlers,
+guards and responses:
+
+| Also at | Same as |
+|---|---|
+| `GET /exam-posts` | `GET /exams` — a plain array of catalogue exams |
+| `GET /exam-posts/:id` | `GET /exams/:id` |
+| `POST`, `PATCH`, `DELETE /exam-posts…` | the matching `/exams…` route |
+
+The console reads the catalogue as `/exam-posts` (the exam picker on the
+Batches form). Everything in the API already used `/exams` — including
+`GET /exams/:id/results` on a separate controller — so both stay rather than
+one being renamed.
+
+`/exam` (singular) is unrelated: it is the attempt session a student sits.

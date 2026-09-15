@@ -85,7 +85,10 @@ The response payload is:
       "isActive": true,
       "lastLogin": null,
       "createdAt": "2026-09-10T08:00:00.000Z",
-      "updatedAt": "2026-09-10T08:00:00.000Z"
+      "updatedAt": "2026-09-10T08:00:00.000Z",
+      "subjects": ["Physics"],
+      "batches": ["Batch A"],
+      "lastLoginAt": null
     }
   ],
   "total": 1,
@@ -102,6 +105,15 @@ assignments. An empty result has `items: []` and `totalPages: 0`.
 The existing development response interceptor wraps this payload under `data`
 with `status` and `message`; production currently returns the payload directly.
 Using `items` inside the payload keeps pagination metadata together in both modes.
+
+**`subjects`, `batches` and `lastLoginAt` are the console's `FacultyMember`
+names**, sent beside the fuller fields rather than replacing them:
+
+| Console field | Same data as | Notes |
+| --- | --- | --- |
+| `subjects: string[]` | `subject.name` | A list because the design draws several. The table holds **one** subject per faculty member, so this is `[]` or a single name. Several subjects needs a `faculty_subjects` join table. |
+| `batches: string[]` | `assignedBatches[].name` | Same name-sorted order. Use `assignedBatches` when you need the ids. |
+| `lastLoginAt` | `lastLogin` | Always an ISO timestamp, or `null`. |
 
 Table mapping: compute serial number as `(page - 1) * limit + rowIndex + 1`;
 render `name`, `subject.name`, the role label, `assignedBatches[].name`,

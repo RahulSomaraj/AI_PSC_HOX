@@ -368,28 +368,45 @@ export class FacultyService {
     const byUser = new Map(
       logins.map((login) => [Number(login.userId), login.lastLogin]),
     );
-    return records.map((record) => ({
-      id: record.id,
-      userId: record.userId,
-      firstName: record.user.firstName,
-      lastName: record.user.lastName,
-      name: `${record.user.firstName} ${record.user.lastName}`,
-      email: record.user.email,
-      phone: record.user.phone,
-      photoURL: record.user.photoURL,
-      subjectId: record.subjectId,
-      subject: record.subject
-        ? { id: record.subject.id, name: record.subject.name }
-        : null,
-      role: record.role,
-      assignedBatches: (record.batches ?? [])
+    return records.map((record) => {
+      const assignedBatches = (record.batches ?? [])
         .map((batch) => ({ id: batch.id, name: batch.name }))
-        .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id),
-      isActive: record.user.isActive,
-      lastLogin: byUser.get(record.userId) ?? null,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    }));
+        .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+      const lastLogin = byUser.get(record.userId) ?? null;
+
+      return {
+        id: record.id,
+        userId: record.userId,
+        firstName: record.user.firstName,
+        lastName: record.user.lastName,
+        name: `${record.user.firstName} ${record.user.lastName}`,
+        email: record.user.email,
+        phone: record.user.phone,
+        photoURL: record.user.photoURL,
+        subjectId: record.subjectId,
+        subject: record.subject
+          ? { id: record.subject.id, name: record.subject.name }
+          : null,
+        role: record.role,
+        assignedBatches,
+        isActive: record.user.isActive,
+        lastLogin,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+
+        // The console's FacultyMember reads these three. Sent beside the
+        // fuller fields above rather than instead of them: `subject` and
+        // `assignedBatches` carry ids the names alone cannot give back.
+        //
+        // `subjects` is a list because the design draws a teacher with
+        // several. The table holds exactly one subject per faculty member,
+        // so today it is a list of at most one - teaching more than one
+        // subject needs a faculty_subjects join table, not a change here.
+        subjects: record.subject ? [record.subject.name] : [],
+        batches: assignedBatches.map((batch) => batch.name),
+        lastLoginAt: lastLogin ? new Date(lastLogin).toISOString() : null,
+      };
+    });
   }
 
   private rethrowWriteError(error: unknown): never {

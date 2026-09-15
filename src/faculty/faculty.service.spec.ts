@@ -269,6 +269,48 @@ describe('FacultyService', () => {
     expect(result).not.toHaveProperty('refreshToken');
   });
 
+  describe("the console's FacultyMember fields", () => {
+    it('lists subject and batch names as plain strings', async () => {
+      const result = await service.findOne(10);
+
+      expect(result.subjects).toEqual(['Physics']);
+      // Name-sorted, the same order as assignedBatches.
+      expect(result.batches).toEqual(['Batch A', 'Batch B']);
+    });
+
+    it('keeps the id-carrying fields beside them', async () => {
+      const result = await service.findOne(10);
+
+      expect(result.subject).toEqual({ id: 1, name: 'Physics' });
+      expect(result.assignedBatches.map((b) => b.id)).toEqual([3, 4]);
+    });
+
+    it('gives an unassigned member empty lists, never null', async () => {
+      qb.getOne.mockResolvedValue({ ...record, subject: null, batches: [] });
+
+      const result = await service.findOne(10);
+
+      expect(result.subjects).toEqual([]);
+      expect(result.batches).toEqual([]);
+    });
+
+    it('reports lastLoginAt as an ISO timestamp', async () => {
+      sessions.getRawMany.mockResolvedValue([
+        { userId: '20', lastLogin: '2026-09-10T08:00:00Z' },
+      ]);
+
+      const result = await service.findOne(10);
+
+      expect(result.lastLoginAt).toBe('2026-09-10T08:00:00.000Z');
+    });
+
+    it('reports a member who never logged in as null', async () => {
+      sessions.getRawMany.mockResolvedValue([]);
+
+      expect((await service.findOne(10)).lastLoginAt).toBeNull();
+    });
+  });
+
   it('returns a valid empty page', async () => {
     qb.getManyAndCount.mockResolvedValue([[], 0]);
     expect(await service.findAll(new FindFacultyQueryDto())).toEqual({

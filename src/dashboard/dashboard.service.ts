@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
@@ -106,12 +110,10 @@ export class DashboardService {
 
       return questions.map((question) => ({
         id: question.id,
-        question: question.question,
+        title: question.question,
+        subject: question.subject?.name ?? null,
+        addedOn: new Date(question.createdAt).toISOString(),
         difficulty: question.difficulty,
-        subject: question.subject
-          ? { id: question.subject.id, name: question.subject.name }
-          : null,
-        createdAt: question.createdAt,
       }));
     } catch (error) {
       this.logger.error(

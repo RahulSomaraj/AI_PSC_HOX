@@ -164,17 +164,23 @@ The newest questions, for the "recently added" list.
 [
   {
     "id": 4821,
-    "question": "Which article of the Constitution deals with the right to equality?",
-    "difficulty": 3,
-    "subject": { "id": 12, "name": "Indian Polity" },
-    "createdAt": "2026-09-11T06:12:44.000Z"
+    "title": "Which article of the Constitution deals with the right to equality?",
+    "subject": "Indian Polity",
+    "addedOn": "2026-09-11T06:12:44.000Z",
+    "difficulty": 3
   }
 ]
 ```
 
-Newest first. `subject` is `null` when the question is untagged. Retired
-questions (`isActive: false`) are excluded. `question` is the full text,
-untruncated — the client decides how much to show.
+The console's `RecentQuestion` shape — `title`, `subject` as a name, and
+`addedOn` — with `difficulty` as an extra it may ignore.
+
+Newest first. Retired questions (`isActive: false`) are excluded. `title` is
+the full question text, untruncated — the client decides how much to show.
+
+`subject` is **`null` when the question is untagged**. The console types it as
+a plain `string`, which does not cover that case; widen it to `string | null`
+rather than have the API invent a label for "no subject".
 
 ### `GET /dashboard/exam-attempts`
 

@@ -157,8 +157,31 @@ describe('DashboardService', () => {
 
       const rows = await service.recentQuestions(5);
 
-      expect(rows[0].subject).toEqual({ id: 12, name: 'Indian Polity' });
+      expect(rows[0].subject).toBe('Indian Polity');
       expect(rows[1].subject).toBeNull();
+    });
+
+    it("answers in the console's RecentQuestion shape", async () => {
+      const find = jest.fn().mockResolvedValue([
+        {
+          id: 1,
+          question: 'Which article deals with equality?',
+          difficulty: 3,
+          subject: { id: 12, name: 'Indian Polity' },
+          createdAt: new Date('2026-09-11T06:12:44.000Z'),
+        },
+      ]);
+      const { service } = build({ questions: { find } });
+
+      const [row] = await service.recentQuestions(5);
+
+      expect(row).toEqual({
+        id: 1,
+        title: 'Which article deals with equality?',
+        subject: 'Indian Polity',
+        addedOn: '2026-09-11T06:12:44.000Z',
+        difficulty: 3,
+      });
     });
   });
 

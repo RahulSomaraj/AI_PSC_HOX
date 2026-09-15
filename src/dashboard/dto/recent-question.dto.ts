@@ -1,36 +1,39 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** The subject a question is tagged with, or null if it is untagged. */
-export class RecentQuestionSubjectDto {
-  @ApiProperty({ example: 12 })
-  id: number;
-
-  @ApiProperty({ example: 'Indian Polity' })
-  name: string;
-}
-
-/** One row of the dashboard's "recently added questions" list. */
+/**
+ * One row of the dashboard's "recently added questions" list, in the shape
+ * the console's RecentQuestion type reads.
+ */
 export class RecentQuestionDto {
   @ApiProperty({ example: 4821 })
   id: number;
 
   @ApiProperty({
-    description: 'Full question text, untruncated - the client decides how ' +
-      'much of it to show.',
-    example: 'Which article of the Constitution deals with the right to equality?',
+    description:
+      'Full question text, untruncated - the client decides how much of it to show.',
+    example:
+      'Which article of the Constitution deals with the right to equality?',
   })
-  question: string;
-
-  @ApiProperty({ description: 'Difficulty, 1 (easiest) to 5.', example: 3 })
-  difficulty: number;
+  title: string;
 
   @ApiProperty({
-    description: 'Subject the question is tagged with; null when untagged.',
-    type: RecentQuestionSubjectDto,
+    description:
+      'Name of the subject the question is tagged with; null when untagged.',
+    example: 'Indian Polity',
     nullable: true,
+    type: String,
   })
-  subject: RecentQuestionSubjectDto | null;
+  subject: string | null;
 
-  @ApiProperty({ example: '2026-09-11T06:12:44.000Z' })
-  createdAt: Date;
+  @ApiProperty({
+    description: 'When the question was added. ISO timestamp.',
+    example: '2026-09-11T06:12:44.000Z',
+  })
+  addedOn: string;
+
+  @ApiProperty({
+    description: 'Difficulty, 1 (easiest) to 5. Beyond the console type.',
+    example: 3,
+  })
+  difficulty: number;
 }

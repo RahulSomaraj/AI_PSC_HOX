@@ -22,13 +22,26 @@ import { GrowthQueryDto } from './dto/growth-query.dto';
 import { ContentUsageService } from './content-usage.service';
 import { ContentUsageQueryDto } from './dto/content-usage-query.dto';
 import { ContentUsageDto } from './dto/content-usage.dto';
+import { ReportTabsService } from './report-tabs.service';
+import {
+  ContentUsageTabDto,
+  EngagementTabDto,
+  ExamAnalyticsTabDto,
+  StudentPerformanceTabDto,
+} from './dto/report-tabs.dto';
 
 /**
- * The Reports screen: one endpoint per tab.
+ * The Reports screen.
  *
- * Student Performance, Exam Analytics, Content Usage and Growth & Engagement,
- * one endpoint each. All four are read-only aggregates over tables another
- * module writes: answer_log, exams, content_view and user_activity.
+ * Two layers. The four tab routes - student-performance, exam-analytics,
+ * content-usage and engagement - answer in the shapes the console's Reports
+ * tabs were built against (BACKEND_ISSUES.md P2-4): one whole, pre-aggregated
+ * report per tab.
+ *
+ * The detailed reports that were first built at three of those paths - a
+ * per-student roster, analytics per course, and content usage by day, subject
+ * and batch - answer the same questions at a finer grain, and are kept at
+ * sub-routes rather than removed. `growth-engagement` is unchanged.
  */
 @ApiTags('reports', 'admin')
 @ApiBearerAuth('JWT-auth')
@@ -40,45 +53,109 @@ import { ContentUsageDto } from './dto/content-usage.dto';
 @Controller('reports')
 export class ReportsController {
   constructor(
+    private readonly reportTabsService: ReportTabsService,
     private readonly studentPerformanceService: StudentPerformanceService,
     private readonly examAnalyticsService: ExamAnalyticsService,
     private readonly growthEngagementService: GrowthEngagementService,
     private readonly contentUsageService: ContentUsageService,
   ) {}
 
+  // ── The console's four tabs ──────────────────────────────────────────────
+
   @Get('student-performance')
   @ApiOperation({
     summary: 'Student Performance tab (Admin only)',
     description:
-      'One row per student: exams taken, average exam score, answer ' +
-      'accuracy, batch and last activity. Every student appears, including ' +
-      'those who have answered nothing - they report null and sort last.',
+      'Active students, average exam score, attempts and sign-ups, with accuracy per subject, batch progress and sign-ups per day.',
   })
-  @ApiResponse({ status: 200, type: StudentPerformanceDto })
-  studentPerformance(
-    @Query() query: StudentPerformanceQueryDto,
-  ): Promise<StudentPerformanceDto> {
-    return this.studentPerformanceService.report(query);
+  @ApiResponse({ status: 200, type: StudentPerformanceTabDto })
+  studentPerformance(): Promise<StudentPerformanceTabDto> {
+    return this.reportTabsService.studentPerformance();
   }
 
   @Get('exam-analytics')
   @ApiOperation({
     summary: 'Exam Analytics tab (Admin only)',
     description:
+      'Scores and participation per catalogue exam, with totals across them.',
+  })
+  @ApiResponse({ status: 200, type: ExamAnalyticsTabDto })
+  examAnalytics(): Promise<ExamAnalyticsTabDto> {
+    return this.reportTabsService.examAnalytics();
+  }
+
+  @Get('content-usage')
+  @ApiOperation({
+    summary: 'Content Usage tab (Admin only)',
+    description:
+      'Opens per library item, most opened first, with totals. Completion is not recorded and reports 0.',
+  })
+  @ApiResponse({ status: 200, type: ContentUsageTabDto })
+  contentUsage(): Promise<ContentUsageTabDto> {
+    return this.reportTabsService.contentUsage();
+  }
+
+  @Get('engagement')
+  @ApiOperation({
+    summary: 'Growth & Engagement tab - Top Engaged Students (Admin only)',
+    description:
+      'The 50 students active on the most days in the last 30, most engaged first.',
+  })
+  @ApiResponse({ status: 200, type: EngagementTabDto })
+  engagement(): Promise<EngagementTabDto> {
+    return this.reportTabsService.engagement();
+  }
+
+  // ── Detailed reports ─────────────────────────────────────────────────────
+
+  @Get('student-performance/students')
+  @ApiOperation({
+    summary: 'Student roster with performance (Admin only)',
+    description:
+      'One row per student: exams taken, average exam score, answer ' +
+      'accuracy, batch and last activity. Every student appears, including ' +
+      'those who have answered nothing - they report null and sort last.',
+  })
+  @ApiResponse({ status: 200, type: StudentPerformanceDto })
+  studentRoster(
+    @Query() query: StudentPerformanceQueryDto,
+  ): Promise<StudentPerformanceDto> {
+    return this.studentPerformanceService.report(query);
+  }
+
+  @Get('exam-analytics/courses')
+  @ApiOperation({
+    summary: 'Exam analytics by course (Admin only)',
+    description:
       'Attempt volume, completion rate and scoring, grouped by course, ' +
-      'with a summary across everything in scope. Grouped by course rather ' +
-      'than by catalogue exam - see API_CONTRACT.md for why.',
+      'with a summary across everything in scope.',
   })
   @ApiResponse({ status: 200, type: ExamAnalyticsDto })
-  examAnalytics(
+  examAnalyticsByCourse(
     @Query() query: ExamAnalyticsQueryDto,
   ): Promise<ExamAnalyticsDto> {
     return this.examAnalyticsService.report(query);
   }
 
+  @Get('content-usage/breakdown')
+  @ApiOperation({
+    summary: 'Content usage by day, subject and batch (Admin only)',
+    description:
+      'What students are reading: totals, a daily series, breakdowns by ' +
+      'subject and by batch, and the most-opened items. Staff opens are ' +
+      'not counted and repeat opens are not deduplicated - both are ' +
+      'decided at the write site. Rows exist from 2026-09-12 only.',
+  })
+  @ApiResponse({ status: 200, type: ContentUsageDto })
+  contentUsageBreakdown(
+    @Query() query: ContentUsageQueryDto,
+  ): Promise<ContentUsageDto> {
+    return this.contentUsageService.report(query);
+  }
+
   @Get('growth-engagement')
   @ApiOperation({
-    summary: 'Growth & Engagement tab (Admin only)',
+    summary: 'Growth & engagement over time (Admin only)',
     description:
       'Signups, active students, new subscriptions and exam attempts per ' +
       'day, gap-filled and oldest first, with totals and a returning rate ' +
@@ -90,21 +167,5 @@ export class ReportsController {
     @Query() query: GrowthQueryDto,
   ): Promise<GrowthEngagementDto> {
     return this.growthEngagementService.report(query.days ?? 30);
-  }
-
-  @Get('content-usage')
-  @ApiOperation({
-    summary: 'Content Usage tab (Admin only)',
-    description:
-      'What students are reading: totals, a daily series, breakdowns by ' +
-      'subject and by batch, and the most-opened items. Staff opens are ' +
-      'not counted and repeat opens are not deduplicated - both are ' +
-      'decided at the write site. Rows exist from 2026-09-12 only.',
-  })
-  @ApiResponse({ status: 200, type: ContentUsageDto })
-  contentUsage(
-    @Query() query: ContentUsageQueryDto,
-  ): Promise<ContentUsageDto> {
-    return this.contentUsageService.report(query);
   }
 }

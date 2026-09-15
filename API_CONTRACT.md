@@ -15,7 +15,7 @@ Unless noted, every endpoint needs `Authorization: Bearer <jwt>`.
 
 > **⚠️ Open — dates come back in two shapes, and nothing states the rule.**
 > Some endpoints return a **day string**: `lastActiveOn: "2026-09-10"`
-> (`/reports/student-performance`), `points[].date` (the dashboard charts),
+> (`/reports/student-performance/students`), `points[].date` (the dashboard charts),
 > `uploadedAt` (content). Others return a **full ISO timestamp**: `addedOn`
 > (`/dashboard/recent-questions`), `recent[].date`
 > (`/faculty/:id/contributions`), `viewedAt` (`/users/:id/recent-content`),
@@ -586,16 +586,155 @@ Completed attempts only — a pending or expired one has no score to rank.
 
 ### The Reports screen — four tabs
 
-`GET /reports/*`, one endpoint per tab on the Reports screen. All `admin`.
+`GET /reports/*`, all `admin`. Two layers:
 
-| Tab | Endpoint |
+- **The four tab routes** answer in the shapes the console's Reports tabs were
+  built against (`BACKEND_ISSUES.md` **P2-4**, mirrored by
+  `src/features/reports/types.ts`). One whole, pre-aggregated report per tab,
+  with no query parameters. Subjects and batches come back as names.
+- **The detailed reports** answer the same questions at a finer grain, with
+  filters and paging. They were first built at three of the tab paths and now
+  live at sub-routes. `growth-engagement` has not moved.
+
+| Tab | Console route | Detailed report |
+|---|---|---|
+| Student Performance | `GET /reports/student-performance` | `GET /reports/student-performance/students` |
+| Exam Analytics | `GET /reports/exam-analytics` | `GET /reports/exam-analytics/courses` |
+| Content Usage | `GET /reports/content-usage` | `GET /reports/content-usage/breakdown` |
+| Growth & Engagement | `GET /reports/engagement` | `GET /reports/growth-engagement` |
+
+> **Moved 2026-09-15.** A client of the detailed reports at
+> `/reports/student-performance`, `/reports/exam-analytics` or
+> `/reports/content-usage` must add the sub-route. The response bodies did not
+> change.
+
+Every percentage below is 0–100. A figure with nothing under it (no
+completed attempts, no rows) reports `0`, not `null`, because the console's
+cards print numbers.
+
+### `GET /reports/student-performance` — tab
+
+```json
+{
+  "summary": {
+    "activeStudents": 412,
+    "averageExamScore": 72.8,
+    "examsAttempted": 1840,
+    "newSignups": 38
+  },
+  "weakSubjects": [{ "subject": "Indian Polity", "percentage": 62.4 }],
+  "averageAccuracy": [{ "subject": "Indian Polity", "percentage": 62.4 }],
+  "batchCompletion": [{ "batch": "LDC Evening 2026", "percentage": 38.5 }],
+  "weeklySignups": [{ "label": "Mon", "value": 14 }]
+}
+```
+
+| Field | Means |
 |---|---|
-| Student Performance | `GET /reports/student-performance` |
-| Exam Analytics | `GET /reports/exam-analytics` |
-| Content Usage | `GET /reports/content-usage` |
-| Growth & Engagement | `GET /reports/growth-engagement` |
+| `activeStudents` | Distinct students seen on any of the last 30 days (`user_activity`). |
+| `averageExamScore` | Mean of `score/totalPossibleScore` over every completed attempt. Two decimals. |
+| `examsAttempted` | Every attempt row, whatever its status. |
+| `newSignups` | Students who signed up in the last 7 days. Equals the sum of `weeklySignups`. |
+| `weakSubjects` | Accuracy per live subject over the whole answer log, **name-ordered and not trimmed**. The card sorts and takes the weakest itself. One decimal. |
+| `averageAccuracy` | The same figures as `weakSubjects`. P2-4 names two lists, and the log holds one measure. |
+| `batchCompletion` | **How far through its schedule** each live batch is: days elapsed between `start_date` and `end_date`, clamped to 0–100. Nothing records syllabus progress, so this is the calendar, not the work. |
+| `weeklySignups` | Seven days, oldest first, gap-filled, bucketed by `ACTIVITY_TIMEZONE`. `label` is the short weekday. |
 
-### `GET /reports/student-performance`
+### `GET /reports/exam-analytics` — tab
+
+```json
+{
+  "summary": {
+    "mockTests": 920,
+    "totalExams": 24,
+    "averageParticipation": 58.1,
+    "averageScore": 61.7
+  },
+  "rows": [
+    {
+      "examId": 3,
+      "examName": "Lower Division Clerk",
+      "averageScore": 61.2,
+      "highestScore": 94,
+      "lowestScore": 18.5,
+      "participationRate": 64.3
+    }
+  ]
+}
+```
+
+One row per catalogue exam that has at least one completed attempt, reached
+through the attempt's stage (`exam_stage_id`). `examId` is the id
+`GET /exams/:id/results` takes. Scores cover completed attempts only.
+
+**`participationRate` is students who completed the exam, over the students
+it was for.** A student is "for" an exam when their aspirant profile targets
+it, or their batch prepares for it. The denominator is the **union** of those
+students and the ones who actually sat it, so a student who sat an exam they
+were not assigned counts on both sides and the rate cannot pass 100.
+
+| Summary | Means |
+|---|---|
+| `mockTests` | Practice attempts: attempts with no catalogue stage. |
+| `totalExams` | Exams in the live catalogue, attempted or not. |
+| `averageParticipation` | The mean of the rows' `participationRate`. |
+| `averageScore` | The mean score over completed catalogue attempts. |
+
+### `GET /reports/content-usage` — tab
+
+```json
+{
+  "summary": {
+    "contentItems": 148,
+    "mostViewedTitle": "Fundamental Rights notes",
+    "totalViews": 4820,
+    "averageCompletion": 0
+  },
+  "rows": [
+    {
+      "contentId": 12,
+      "title": "Fundamental Rights notes",
+      "type": "pdf",
+      "subject": "Indian Polity",
+      "views": 125,
+      "completionRate": 0
+    }
+  ]
+}
+```
+
+Every live library item, **most opened first**, then by title. Views are
+all-time opens from `content_view`, so the view-tracking rules in
+**Content Library** apply. `subject` is `null` for an untagged item.
+`mostViewedTitle` is `null` until something has been opened.
+
+> **`completionRate` and `averageCompletion` are always `0`.** Nothing records
+> how much of an item a student finished, only that they opened it. The
+> fields are present because the tab renders them. They start meaning
+> something when progress is tracked.
+
+### `GET /reports/engagement` — tab
+
+```json
+{
+  "rows": [
+    {
+      "studentId": 42,
+      "name": "Anjali Menon",
+      "batch": "LDC Evening 2026",
+      "lastActiveAt": "2026-09-15T08:12:00.000Z"
+    }
+  ]
+}
+```
+
+The Top Engaged Students table: the **50** students active on the most days of
+the last 30, ties broken by who was seen most recently. **The order is the
+ranking.** `batch` is `null` for a student in no batch. `lastActiveAt` is a full
+ISO timestamp. The growth charts on the same tab read
+`GET /reports/growth-engagement`.
+
+### `GET /reports/student-performance/students`
 
 One row per student. **Every** student with the `user` role appears, including
 one who has answered nothing — the tab is a roster, not a leaderboard of the
@@ -644,7 +783,7 @@ Those students sort last whichever direction you ask for.
 anyone without a profile or without a batch assignment. `lastActiveOn` only
 covers the period since presence tracking shipped.
 
-### `GET /reports/exam-analytics`
+### `GET /reports/exam-analytics/courses`
 
 Attempt volume and scoring, **grouped by course**, with a summary across
 everything in scope.
@@ -742,7 +881,7 @@ window.
 > earlier than that report zero because nothing was recorded, not because
 > nobody came. Read a long window with that in mind.
 
-### `GET /reports/content-usage`
+### `GET /reports/content-usage/breakdown`
 
 What students are actually reading.
 

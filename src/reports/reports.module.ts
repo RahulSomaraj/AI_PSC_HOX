@@ -7,6 +7,7 @@ import { StudentPerformanceService } from './student-performance.service';
 import { ExamAnalyticsService } from './exam-analytics.service';
 import { GrowthEngagementService } from './growth-engagement.service';
 import { ContentUsageService } from './content-usage.service';
+import { ReportTabsService } from './report-tabs.service';
 import { StudentAnalyticsController } from './student-analytics.controller';
 import { ExamResultsController } from './exam-results.controller';
 import { ReportsController } from './reports.controller';
@@ -57,6 +58,7 @@ import { ContentView } from '../content-views/entities/content-view.entity';
     ExamAnalyticsService,
     GrowthEngagementService,
     ContentUsageService,
+    ReportTabsService,
   ],
 })
 export class ReportsModule {}

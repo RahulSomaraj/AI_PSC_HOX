@@ -168,6 +168,38 @@ export class ActivityService {
   }
 
   /**
+   * Distinct users active at any point in the last `days` days, ending today.
+   *
+   * Not the sum of dailyActiveUsers(): a student active on Monday and again
+   * on Tuesday is one student, and summing the days would count them twice.
+   * This is the figure the dashboard prints above the DAU chart.
+   *
+   * Same window, same role filter and same soft-delete rule as
+   * dailyActiveUsers(), so the headline and the bars always describe the
+   * same population.
+   */
+  async distinctActiveUsers(days = 7, role?: Role): Promise<number> {
+    const span = Number.isFinite(days) && days > 0 ? Math.floor(days) : 7;
+    const to = this.today();
+    const from = this.shiftDate(to, -(span - 1));
+
+    const query = this.activityRepository
+      .createQueryBuilder('activity')
+      .select('COUNT(DISTINCT activity.user_id)', 'count')
+      .where('activity.activity_date BETWEEN :from AND :to', { from, to });
+
+    if (role !== undefined) {
+      query
+        .innerJoin(User, 'user', 'user.id = activity.user_id')
+        .andWhere('user.role = :role', { role })
+        .andWhere('user.deletedAt IS NULL');
+    }
+
+    const row = await query.getRawOne<{ count: string }>();
+    return Number(row?.count ?? 0);
+  }
+
+  /**
    * Distinct users active on one date. `date` is 'YYYY-MM-DD' in the
    * configured timezone; defaults to today.
    */

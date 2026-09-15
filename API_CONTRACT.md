@@ -132,7 +132,8 @@ The KPI tiles across the top, in one round trip.
 {
   "totalStudents": 1240,
   "activeBatches": 18,
-  "activeSubscriptions": 842
+  "activeSubscriptions": 842,
+  "todaysExams": 0
 }
 ```
 
@@ -141,6 +142,7 @@ The KPI tiles across the top, in one round trip.
 | `totalStudents` | Non-deleted accounts with `role=user`. Same figure as `GET /users/count?role=user`. |
 | `activeBatches` | Batches whose `status` is `active` **or** `ongoing` — see the caveat below. |
 | `activeSubscriptions` | Not expired, not cancelled, held by a live user. Same figure as `GET /subscriptions/stats/active-count`. |
+| `todaysExams` | **Always `0` for now.** Nothing in the catalogue carries a date (decision **D1**), so there is nothing to count. Sent because the console's `DashboardSummary` requires the field — do not read the 0 as "no exams today". |
 
 > **Caveat on `activeBatches`.** `batches.status` carries two unrelated ideas
 > in one column: `active`/`inactive` are admin intent, `upcoming`/`ongoing`
@@ -190,20 +192,25 @@ Attempts per day, for the activity chart.
 
 | Query | Notes |
 |---|---|
-| `days` | 1–90, default 7. |
+| `range` | `1d` to `90d`, default `7d`. The console only sends `7d`. The old `days=7` is a `400`. |
 
-**Response `200`**
+**Response `200`** — the console's `DashboardSeries`:
 
 ```json
-[
-  { "date": "2026-09-09", "count": 7 },
-  { "date": "2026-09-10", "count": 0 },
-  { "date": "2026-09-11", "count": 63 }
-]
+{
+  "total": 70,
+  "points": [
+    { "label": "Mon", "value": 7, "date": "2026-09-14" },
+    { "label": "Tue", "value": 0, "date": "2026-09-15" },
+    { "label": "Wed", "value": 63, "date": "2026-09-16" }
+  ]
+}
 ```
 
 Counts attempt rows by `createdAt`, whatever their status — an attempt left
-`pending` and never started still counts.
+`pending` and never started still counts. **`total` is the sum of the days**,
+which is safe here: every attempt is its own row, so none can be counted on
+two days.
 
 ### `GET /dashboard/dau`
 
@@ -213,30 +220,42 @@ Daily active students, for the engagement chart.
 
 | Query | Notes |
 |---|---|
-| `days` | 1–90, default 7. |
+| `range` | Same as `exam-attempts`. |
 
 **Response `200`** — same shape as `exam-attempts`:
 
 ```json
-[
-  { "date": "2026-09-10", "count": 0 },
-  { "date": "2026-09-11", "count": 148 }
-]
+{
+  "total": 212,
+  "points": [
+    { "label": "Mon", "value": 148, "date": "2026-09-14" },
+    { "label": "Tue", "value": 131, "date": "2026-09-15" }
+  ]
+}
 ```
 
 Distinct students seen on each day, counted from presence tracking.
 
-**Both series are oldest first and gap-filled.** A day with no activity comes
-back as `count: 0` rather than being absent, so the chart draws a continuous
-line instead of joining across a missing point. Both bucket the day by
-`ACTIVITY_TIMEZONE` (default `Asia/Kolkata`), so the two charts share a day
-boundary and can be overlaid.
+> **`total` is distinct students across the whole window — not the sum of the
+> days.** A student active on Monday and again on Tuesday is one active
+> student; summing the bars above would say 279 where the true figure is 212.
+> This is what the console's spec asks the server to decide.
+
+**Both series are oldest first and gap-filled.** A quiet day comes back as
+`value: 0` rather than being absent, so the chart draws a continuous line.
+Both bucket the day by `ACTIVITY_TIMEZONE` (default `Asia/Kolkata`), so the
+two charts share a day boundary and can be overlaid.
+
+`label` is the short weekday the x-axis draws. `date` is an extra beyond the
+console type: weekday labels repeat once a window passes seven days, and
+`date` does not.
 
 ### Not built
 
 `GET /dashboard/upcoming-exams` — nothing in the catalogue carries a date, so
 there is no schedule to read. Blocked on decision **D1** in `CLAUDE.md` §5.
-The "Today's Exams" tile has no source until that is settled.
+The "Today's Exams" tile has no source until that is settled — which is why
+`todaysExams` above is a fixed `0`.
 
 ---
 

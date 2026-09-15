@@ -16,6 +16,8 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DashboardSummaryDto } from './dto/dashboard-summary.dto';
 import { RecentQuestionDto } from './dto/recent-question.dto';
 import { DailyAttemptCountDto } from './dto/daily-attempt-count.dto';
+import { DashboardSeriesDto } from './dto/dashboard-series.dto';
+import { ActivityService } from '../activity/activity.service';
 
 /**
  * Which batch states count as "running" for the KPI tile.
@@ -53,6 +55,7 @@ export class DashboardService {
     private readonly examRepository: Repository<Exam>,
     private readonly subscriptionsService: SubscriptionsService,
     configService: ConfigService,
+    private readonly activityService: ActivityService,
   ) {
     this.timeZone =
       configService.get<string>('ACTIVITY_TIMEZONE') ?? 'Asia/Kolkata';
@@ -80,6 +83,11 @@ export class DashboardService {
         totalStudents,
         activeBatches,
         activeSubscriptions: subscriptions.activeSubscriptions,
+        // Always 0 until exams can be scheduled. Nothing in the catalogue
+        // carries a date - decision D1 in CLAUDE.md - so there is no "today"
+        // to count against. Sent as 0 rather than omitted because the
+        // console's DashboardSummary requires the field.
+        todaysExams: 0,
       };
     } catch (error) {
       this.logger.error(
@@ -172,6 +180,67 @@ export class DashboardService {
       );
       throw new InternalServerErrorException('Failed to load exam attempts');
     }
+  }
+
+  /**
+   * The exam-attempts chart, in the console's DashboardSeries shape.
+   *
+   * `total` is the plain sum of the days. That is safe here in a way it is
+   * not for DAU: every attempt is its own row, so no attempt can be counted
+   * on two days.
+   */
+  async examAttemptsSeries(days: number): Promise<DashboardSeriesDto> {
+    const series = await this.examAttempts(days);
+    return {
+      total: series.reduce((sum, day) => sum + day.count, 0),
+      points: series.map((day) => this.toPoint(day)),
+    };
+  }
+
+  /**
+   * The daily-active-students chart, in the console's DashboardSeries shape.
+   *
+   * `total` is distinct students across the whole window, **not** the sum of
+   * the days: a student active on Monday and Tuesday is one active student,
+   * and summing would count them twice. The console's spec asks for exactly
+   * this (BACKEND_ISSUES.md, Dashboard, point 1).
+   */
+  async dailyActiveSeries(days: number): Promise<DashboardSeriesDto> {
+    try {
+      const [series, total] = await Promise.all([
+        this.activityService.dailyActiveUsers(days, Role.User),
+        this.activityService.distinctActiveUsers(days, Role.User),
+      ]);
+      return { total, points: series.map((day) => this.toPoint(day)) };
+    } catch (error) {
+      this.logger.error(
+        `Failed to load daily active students: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw new InternalServerErrorException(
+        'Failed to load daily active students',
+      );
+    }
+  }
+
+  /**
+   * One day as a chart point: the weekday the axis draws, the count, and the
+   * date itself so a window longer than a week stays unambiguous.
+   *
+   * The weekday is read off the calendar date at UTC midnight. `date` is
+   * already a day in the activity timezone, so reading it back in UTC names
+   * that same day rather than shifting it.
+   */
+  private toPoint(day: { date: string; count: number }) {
+    return {
+      label: new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        timeZone: 'UTC',
+      }).format(new Date(`${day.date}T00:00:00Z`)),
+      value: day.count,
+      date: day.date,
+    };
   }
 
   /**

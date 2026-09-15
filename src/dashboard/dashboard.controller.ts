@@ -10,14 +10,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { HttpExceptionFilter } from '../shared/exception-service';
-import { ActivityService } from '../activity/activity.service';
-import { DailyActiveCountDto } from '../activity/dto/daily-active-count.dto';
 import { DashboardService } from './dashboard.service';
-import { DaysQueryDto } from './dto/days-query.dto';
+import { RangeQueryDto, daysIn } from './dto/range-query.dto';
 import { RecentQuestionsQueryDto } from './dto/recent-questions-query.dto';
 import { DashboardSummaryDto } from './dto/dashboard-summary.dto';
 import { RecentQuestionDto } from './dto/recent-question.dto';
-import { DailyAttemptCountDto } from './dto/daily-attempt-count.dto';
+import { DashboardSeriesDto } from './dto/dashboard-series.dto';
 
 /**
  * Admin dashboard reads.
@@ -36,17 +34,14 @@ import { DailyAttemptCountDto } from './dto/daily-attempt-count.dto';
 @UseFilters(new HttpExceptionFilter('Dashboard'))
 @Controller('dashboard')
 export class DashboardController {
-  constructor(
-    private readonly dashboardService: DashboardService,
-    private readonly activityService: ActivityService,
-  ) {}
+  constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('summary')
   @ApiOperation({
     summary: 'Dashboard KPI tiles (Admin only)',
     description:
-      'Total students, running batches and active subscriptions in one ' +
-      'round trip. The three counts are issued in parallel.',
+      'Total students, running batches, active subscriptions and today’s ' +
+      'exams in one round trip. The counts are issued in parallel.',
   })
   @ApiResponse({ status: 200, type: DashboardSummaryDto })
   summary(): Promise<DashboardSummaryDto> {
@@ -71,28 +66,23 @@ export class DashboardController {
   @ApiOperation({
     summary: 'Exam attempts per day (Admin only)',
     description:
-      'Attempts started per day, oldest first and gap-filled so the chart ' +
-      'has a point for every day in the window.',
+      'Attempts started per day, oldest first and gap-filled. `total` is the ' +
+      'sum of the days - every attempt is its own row, so none is counted twice.',
   })
-  @ApiResponse({ status: 200, type: [DailyAttemptCountDto] })
-  examAttempts(@Query() query: DaysQueryDto): Promise<DailyAttemptCountDto[]> {
-    return this.dashboardService.examAttempts(query.days ?? 7);
+  @ApiResponse({ status: 200, type: DashboardSeriesDto })
+  examAttempts(@Query() query: RangeQueryDto): Promise<DashboardSeriesDto> {
+    return this.dashboardService.examAttemptsSeries(daysIn(query.range));
   }
 
-  /**
-   * Thin pass-through to ActivityService, which owns the presence data.
-   * The endpoint belongs to the dashboard; ActivityModule deliberately has
-   * no controller of its own.
-   */
   @Get('dau')
   @ApiOperation({
     summary: 'Daily active students (Admin only)',
     description:
-      'Distinct students seen per day, oldest first and gap-filled, so the ' +
-      'chart draws a point for every day in the window.',
+      'Distinct students seen per day, oldest first and gap-filled. `total` ' +
+      'is distinct students across the whole window, not the sum of the days.',
   })
-  @ApiResponse({ status: 200, type: [DailyActiveCountDto] })
-  dau(@Query() query: DaysQueryDto): Promise<DailyActiveCountDto[]> {
-    return this.activityService.dailyActiveUsers(query.days ?? 7, Role.User);
+  @ApiResponse({ status: 200, type: DashboardSeriesDto })
+  dau(@Query() query: RangeQueryDto): Promise<DashboardSeriesDto> {
+    return this.dashboardService.dailyActiveSeries(daysIn(query.range));
   }
 }

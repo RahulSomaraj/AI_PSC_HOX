@@ -26,6 +26,7 @@ function queryBuilder(rows: unknown[] = [], count = 0) {
   }
   qb.getRawMany = jest.fn().mockResolvedValue(rows);
   qb.getCount = jest.fn().mockResolvedValue(count);
+  qb.getRawOne = jest.fn().mockResolvedValue({ count: String(count) });
   return qb;
 }
 
@@ -44,9 +45,9 @@ function configWith(values: Record<string, string> = {}) {
  * is flushed through it, and a faked setImmediate would never fire.
  */
 function freezeAt(iso: string) {
-  jest.useFakeTimers({ doNotFake: ['setImmediate'] }).setSystemTime(
-    new Date(iso),
-  );
+  jest
+    .useFakeTimers({ doNotFake: ['setImmediate'] })
+    .setSystemTime(new Date(iso));
 }
 
 /** Lets the fire-and-forget write() settle. */
@@ -216,6 +217,53 @@ describe('ActivityService', () => {
       await flush();
 
       expect(qb.execute).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('distinctActiveUsers', () => {
+    it('counts each user once across the whole window', async () => {
+      const qb = queryBuilder([], 3);
+      const service = new ActivityService(repositoryWith(qb), configWith());
+      jest.spyOn(service, 'today').mockReturnValue('2026-09-11');
+
+      await expect(service.distinctActiveUsers(7)).resolves.toBe(3);
+      expect(qb.select).toHaveBeenCalledWith(
+        'COUNT(DISTINCT activity.user_id)',
+        'count',
+      );
+    });
+
+    it('uses the same window as dailyActiveUsers', async () => {
+      const qb = queryBuilder([], 0);
+      const service = new ActivityService(repositoryWith(qb), configWith());
+      jest.spyOn(service, 'today').mockReturnValue('2026-09-11');
+
+      await service.distinctActiveUsers(7);
+
+      expect(qb.where).toHaveBeenCalledWith(
+        'activity.activity_date BETWEEN :from AND :to',
+        { from: '2026-09-05', to: '2026-09-11' },
+      );
+    });
+
+    it('applies the role and soft-delete filter when a role is given', async () => {
+      const qb = queryBuilder([], 0);
+      const service = new ActivityService(repositoryWith(qb), configWith());
+
+      await service.distinctActiveUsers(7, Role.User);
+
+      expect(qb.andWhere).toHaveBeenCalledWith('user.role = :role', {
+        role: Role.User,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('user.deletedAt IS NULL');
+    });
+
+    it('returns 0, not NaN, when nobody was active', async () => {
+      const qb = queryBuilder([], 0);
+      qb.getRawOne.mockResolvedValue(undefined);
+      const service = new ActivityService(repositoryWith(qb), configWith());
+
+      await expect(service.distinctActiveUsers(7)).resolves.toBe(0);
     });
   });
 

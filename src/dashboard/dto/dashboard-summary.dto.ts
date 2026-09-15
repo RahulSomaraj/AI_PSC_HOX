@@ -24,4 +24,12 @@ export class DashboardSummaryDto {
     example: 842,
   })
   activeSubscriptions: number;
+
+  @ApiProperty({
+    description:
+      'Exams scheduled for today. Always 0 for now: nothing in the catalogue ' +
+      'carries a date (decision D1), so there is nothing to count.',
+    example: 0,
+  })
+  todaysExams: number;
 }

@@ -41,6 +41,10 @@ type Deps = {
   exams?: Partial<Repository<Exam>>;
   subscriptions?: { countActive: jest.Mock };
   config?: Record<string, string>;
+  activity?: {
+    dailyActiveUsers?: jest.Mock;
+    distinctActiveUsers?: jest.Mock;
+  };
 };
 
 function build(deps: Deps = {}) {
@@ -56,6 +60,11 @@ function build(deps: Deps = {}) {
     }) as any,
     subscriptions as any,
     configWith(deps.config ?? {}),
+    {
+      dailyActiveUsers: jest.fn().mockResolvedValue([]),
+      distinctActiveUsers: jest.fn().mockResolvedValue(0),
+      ...deps.activity,
+    } as any,
   );
   return { service, subscriptions };
 }
@@ -78,6 +87,7 @@ describe('DashboardService', () => {
         totalStudents: 1240,
         activeBatches: 18,
         activeSubscriptions: 842,
+        todaysExams: 0,
       });
     });
 
@@ -232,6 +242,88 @@ describe('DashboardService', () => {
       await service.examAttempts(1);
 
       expect(qb.setParameter).toHaveBeenCalledWith('tz', 'Asia/Kolkata');
+    });
+  });
+
+  describe('chart series', () => {
+    it('shapes exam attempts as { total, points } with weekday labels', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-09-16T00:30:00Z'));
+      const qb = queryBuilder([
+        { date: '2026-09-14', count: '4' },
+        { date: '2026-09-16', count: '9' },
+      ]);
+      const { service } = build({
+        exams: { createQueryBuilder: jest.fn().mockReturnValue(qb) },
+        config: { ACTIVITY_TIMEZONE: 'UTC' },
+      });
+
+      await expect(service.examAttemptsSeries(3)).resolves.toEqual({
+        total: 13,
+        points: [
+          { label: 'Mon', value: 4, date: '2026-09-14' },
+          { label: 'Tue', value: 0, date: '2026-09-15' },
+          { label: 'Wed', value: 9, date: '2026-09-16' },
+        ],
+      });
+    });
+
+    it('sums exam attempts, since each attempt is its own row', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-09-16T00:30:00Z'));
+      const qb = queryBuilder([
+        { date: '2026-09-15', count: '5' },
+        { date: '2026-09-16', count: '5' },
+      ]);
+      const { service } = build({
+        exams: { createQueryBuilder: jest.fn().mockReturnValue(qb) },
+        config: { ACTIVITY_TIMEZONE: 'UTC' },
+      });
+
+      expect((await service.examAttemptsSeries(2)).total).toBe(10);
+    });
+
+    it('takes the DAU total from distinct students, not the sum of days', async () => {
+      // 3 students Monday, 3 Tuesday - but the same 3. Summing would say 6.
+      const dailyActiveUsers = jest.fn().mockResolvedValue([
+        { date: '2026-09-14', count: 3 },
+        { date: '2026-09-15', count: 3 },
+      ]);
+      const distinctActiveUsers = jest.fn().mockResolvedValue(3);
+      const { service } = build({
+        activity: { dailyActiveUsers, distinctActiveUsers },
+      });
+
+      const series = await service.dailyActiveSeries(2);
+
+      expect(series.total).toBe(3);
+      expect(series.points).toEqual([
+        { label: 'Mon', value: 3, date: '2026-09-14' },
+        { label: 'Tue', value: 3, date: '2026-09-15' },
+      ]);
+    });
+
+    it('asks for students only, over the same window, for bars and total', async () => {
+      const dailyActiveUsers = jest.fn().mockResolvedValue([]);
+      const distinctActiveUsers = jest.fn().mockResolvedValue(0);
+      const { service } = build({
+        activity: { dailyActiveUsers, distinctActiveUsers },
+      });
+
+      await service.dailyActiveSeries(7);
+
+      expect(dailyActiveUsers).toHaveBeenCalledWith(7, Role.User);
+      expect(distinctActiveUsers).toHaveBeenCalledWith(7, Role.User);
+    });
+
+    it('wraps a failing DAU read in a 500', async () => {
+      const { service } = build({
+        activity: {
+          dailyActiveUsers: jest.fn().mockRejectedValue(new Error('down')),
+        },
+      });
+
+      await expect(service.dailyActiveSeries(7)).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      );
     });
   });
 });

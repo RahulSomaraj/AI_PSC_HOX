@@ -1037,3 +1037,40 @@ who has opened nothing is **`200` with `[]`**.
 > **Rows only exist from 2026-09-12**, when `GET /content/:id` started
 > recording opens. Unlike the answer log there is nothing to backfill from,
 > so this panel is empty for any reading that happened before that date.
+
+---
+
+## Batches
+
+Only the parts reshaped to match the console are documented here; the rest
+of the batch surface is unchanged.
+
+### Request and response names
+
+| Console | Stored as | Notes |
+|---|---|---|
+| `targetExamId` | `exam_id` | **Required on create.** The request field is `targetExamId`; sending the old `examId` is a `400`. Responses carry both. |
+| `timings` | `timings` | Free text, max 100 — `"10:00 AM - 12:00 PM"`. |
+| `imageUrl` | `image_url` | A `fileUrl` from `POST /uploads`. |
+| `isActive` | — | Response only, derived: `false` only when `status` is `inactive`. |
+| `shift` | — | **Accepted and ignored.** The table has no shift — `mode` replaced it. Allowed only so the console's `shift.ts` guess does not trip `forbidNonWhitelisted`. Delete it from the console and it can come out of the DTO. |
+
+### `POST /batches` — what the console sends
+
+```json
+{
+  "name": "Alpha Batch 2026",
+  "targetExamId": 3,
+  "description": "Weekend online batch",
+  "mode": "online",
+  "timings": "10:00 AM - 12:00 PM",
+  "startDate": "2026-01-01",
+  "endDate": "2026-12-01"
+}
+```
+
+### Still missing from the Batch details screen
+
+The **Subjects** panel (each subject with its faculty) and the **Linked
+Exams** panel need new relations — batch↔subject carrying a faculty, and
+batch↔exam. Neither exists yet.

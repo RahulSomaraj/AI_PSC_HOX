@@ -19,8 +19,21 @@ import { BatchStatus } from '../common/enums/batch-status.enum';
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
+/**
+ * A batch as the console reads it.
+ *
+ * The entity plus the console's names for two things the table calls
+ * something else: `targetExamId` is `exam_id`, and `isActive` is `status`
+ * seen as a yes/no. `examId` stays on the object too, so nothing that already
+ * reads it breaks.
+ */
+export type BatchView = Batch & {
+  targetExamId: number;
+  isActive: boolean;
+};
+
 export interface PaginatedBatches {
-  items: Batch[];
+  items: BatchView[];
   total: number;
   page: number;
   limit: number;
@@ -39,17 +52,17 @@ export class BatchesService {
   async create(
     createBatchDto: CreateBatchDto,
     actorId?: number,
-  ): Promise<Batch> {
+  ): Promise<BatchView> {
     try {
-      await this.assertExamExists(createBatchDto.examId);
+      await this.assertExamExists(createBatchDto.targetExamId);
       await this.assertNameIsFree(createBatchDto.name);
       this.assertDateRange(createBatchDto.startDate, createBatchDto.endDate);
 
       const batch = this.batchRepository.create({
-        ...createBatchDto,
+        ...this.toColumns(createBatchDto),
         createdBy: actorId ?? null,
       });
-      return await this.batchRepository.save(batch);
+      return this.present(await this.batchRepository.save(batch));
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw new InternalServerErrorException('Failed to create batch');
@@ -90,7 +103,7 @@ export class BatchesService {
       });
 
       return {
-        items,
+        items: items.map((batch) => this.present(batch)),
         total,
         page,
         limit,
@@ -101,7 +114,69 @@ export class BatchesService {
     }
   }
 
-  async findOne(id: number): Promise<Batch> {
+  async findOne(id: number): Promise<BatchView> {
+    return this.present(await this.load(id));
+  }
+
+  async update(
+    id: number,
+    updateBatchDto: UpdateBatchDto,
+    actorId?: number,
+  ): Promise<BatchView> {
+    try {
+      const batch = await this.load(id);
+
+      if (updateBatchDto.targetExamId !== undefined) {
+        await this.assertExamExists(updateBatchDto.targetExamId);
+      }
+      if (updateBatchDto.name && updateBatchDto.name !== batch.name) {
+        await this.assertNameIsFree(updateBatchDto.name, id);
+      }
+
+      // Either date may be omitted, so validate the range the batch will end
+      // up with rather than only what was sent.
+      this.assertDateRange(
+        updateBatchDto.startDate ?? batch.startDate,
+        updateBatchDto.endDate ?? batch.endDate,
+      );
+
+      Object.assign(batch, this.toColumns(updateBatchDto), {
+        updatedBy: actorId ?? null,
+      });
+      return this.present(await this.batchRepository.save(batch));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException('Failed to update batch');
+    }
+  }
+
+  async setStatus(
+    id: number,
+    status: BatchStatus,
+    actorId?: number,
+  ): Promise<BatchView> {
+    return await this.update(id, { status }, actorId);
+  }
+
+  async remove(id: number, actorId?: number): Promise<{ message: string }> {
+    try {
+      const batch = await this.load(id);
+
+      batch.deletedBy = actorId ?? null;
+      await this.batchRepository.save(batch);
+      await this.batchRepository.softDelete(id);
+
+      return {
+        message: `Batch with ID ${id} has been successfully removed`,
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException('Failed to delete batch');
+    }
+  }
+
+  /** The entity itself, for the write paths that save it back. */
+  private async load(id: number): Promise<Batch> {
     try {
       const batch = await this.batchRepository.findOne({
         where: { id },
@@ -117,59 +192,28 @@ export class BatchesService {
     }
   }
 
-  async update(
-    id: number,
-    updateBatchDto: UpdateBatchDto,
-    actorId?: number,
-  ): Promise<Batch> {
-    try {
-      const batch = await this.findOne(id);
-
-      if (updateBatchDto.examId !== undefined) {
-        await this.assertExamExists(updateBatchDto.examId);
-      }
-      if (updateBatchDto.name && updateBatchDto.name !== batch.name) {
-        await this.assertNameIsFree(updateBatchDto.name, id);
-      }
-
-      // Either date may be omitted, so validate the range the batch will end
-      // up with rather than only what was sent.
-      this.assertDateRange(
-        updateBatchDto.startDate ?? batch.startDate,
-        updateBatchDto.endDate ?? batch.endDate,
-      );
-
-      Object.assign(batch, updateBatchDto, { updatedBy: actorId ?? null });
-      return await this.batchRepository.save(batch);
-    } catch (err) {
-      if (err instanceof HttpException) throw err;
-      throw new InternalServerErrorException('Failed to update batch');
-    }
+  /**
+   * A request body in column names.
+   *
+   * `targetExamId` becomes `examId`. `shift` is dropped on the floor - the
+   * table has no such column, and the console only sends it out of habit
+   * (see CreateBatchDto.shift).
+   */
+  private toColumns(dto: Partial<CreateBatchDto>): Partial<Batch> {
+    const { targetExamId, shift: _shift, ...rest } = dto;
+    return {
+      ...rest,
+      ...(targetExamId !== undefined ? { examId: targetExamId } : {}),
+    };
   }
 
-  async setStatus(
-    id: number,
-    status: BatchStatus,
-    actorId?: number,
-  ): Promise<Batch> {
-    return await this.update(id, { status }, actorId);
-  }
-
-  async remove(id: number, actorId?: number): Promise<{ message: string }> {
-    try {
-      const batch = await this.findOne(id);
-
-      batch.deletedBy = actorId ?? null;
-      await this.batchRepository.save(batch);
-      await this.batchRepository.softDelete(id);
-
-      return {
-        message: `Batch with ID ${id} has been successfully removed`,
-      };
-    } catch (err) {
-      if (err instanceof HttpException) throw err;
-      throw new InternalServerErrorException('Failed to delete batch');
-    }
+  private present(batch: Batch): BatchView {
+    return Object.assign({}, batch, {
+      targetExamId: batch.examId,
+      // Only an admin-inactive batch is off. `ongoing` and `upcoming` are
+      // lifecycle states of a batch that is very much live.
+      isActive: batch.status !== BatchStatus.Inactive,
+    });
   }
 
   private async assertExamExists(examId: number): Promise<void> {

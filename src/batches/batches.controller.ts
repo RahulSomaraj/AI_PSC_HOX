@@ -62,7 +62,8 @@ export class BatchesController {
         summary: 'Online batch',
         value: {
           name: 'Alpha Batch 2025',
-          examId: 1,
+          targetExamId: 1,
+          timings: '10:00 AM - 12:00 PM',
           mode: 'online',
           studentCount: 120,
           startDate: '2025-01-01',
@@ -74,7 +75,7 @@ export class BatchesController {
         summary: 'Minimal batch',
         value: {
           name: 'Winter Batch 2025',
-          examId: 2,
+          targetExamId: 2,
           mode: 'hybrid',
           startDate: '2025-11-14',
           endDate: '2026-11-14',

@@ -66,6 +66,18 @@ export class Batch {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  /**
+   * Free text as the admin types it - "10:00 AM - 12:00 PM". Deliberately
+   * not a pair of times: the design collects one text field, and a batch
+   * meeting on different hours on different days has no single start time.
+   */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  timings: string | null;
+
+  /** The photo on the batch details header - a `fileUrl` from POST /uploads. */
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  imageUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

@@ -2,10 +2,12 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -24,13 +26,14 @@ export class CreateBatchDto {
   name: string;
 
   @ApiProperty({
-    description: 'ID of the exam / post this batch is coached for',
+    description:
+      'ID of the exam / post this batch is coached for. Named `targetExamId` to match the console; stored as `exam_id`.',
     example: 1,
   })
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  examId: number;
+  targetExamId: number;
 
   @ApiProperty({
     description: 'How the batch is delivered',
@@ -90,4 +93,39 @@ export class CreateBatchDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'When the batch meets, as free text.',
+    example: '10:00 AM - 12:00 PM',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  timings?: string;
+
+  @ApiPropertyOptional({
+    description: 'Header photo - the `fileUrl` returned by POST /uploads.',
+  })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2048)
+  imageUrl?: string;
+
+  /**
+   * Accepted and ignored. The batch table has no shift - `mode` replaced it -
+   * but the console still derives one from `timings` and sends it on every
+   * create and update (its `shift.ts`, which its own comment asks to delete).
+   * Without this, `forbidNonWhitelisted` would 400 every save from the
+   * console. Remove once the console stops sending it.
+   */
+  @ApiPropertyOptional({
+    enum: ['Morning', 'Evening'],
+    deprecated: true,
+    description:
+      'Ignored. Accepted only so the console can keep sending it while it removes its shift guess.',
+  })
+  @IsOptional()
+  @IsIn(['Morning', 'Evening'])
+  shift?: 'Morning' | 'Evening';
 }
